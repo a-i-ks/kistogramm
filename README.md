@@ -1,1 +1,1 @@
-# kistogramm
+# Kistogramm
