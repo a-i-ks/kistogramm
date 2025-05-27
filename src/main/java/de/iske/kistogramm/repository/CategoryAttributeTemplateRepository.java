@@ -8,5 +8,7 @@ import java.util.List;
 
 @Repository
 public interface CategoryAttributeTemplateRepository extends JpaRepository<CategoryAttributeTemplateEntity, Integer> {
-    List<CategoryAttributeTemplateEntity> findByCategory_Id(Integer categoryId);
+    List<CategoryAttributeTemplateEntity> findByCategoryId(Integer categoryId);
+
+    boolean existsByCategoryIdAndAttributeName(Integer categoryId, String attributeName);
 }

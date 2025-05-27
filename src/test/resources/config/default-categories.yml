@@ -1,0 +1,12 @@
+kistogramm:
+  default-categories:
+    - name: Kleidung
+      attributes:
+        - Größe
+        - Zuletzt getragen
+    - name: Elektronik
+    - name: Lebensmittel
+      attributes:
+        - MHD
+    - name: Möbelstück
+    - name: Pflanze

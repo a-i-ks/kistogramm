@@ -26,7 +26,7 @@ public class CategoryAttributeTemplateService {
     }
 
     public List<CategoryAttributeTemplate> getTemplatesForCategory(Integer categoryId) {
-        return repository.findByCategory_Id(categoryId).stream()
+        return repository.findByCategoryId(categoryId).stream()
                 .map(mapper::toDto)
                 .toList();
     }

@@ -69,7 +69,7 @@ public class ItemService {
             entity.setCategory(category);
 
             List<CategoryAttributeTemplateEntity> templates =
-                    templateRepository.findByCategory_Id(dto.getCategoryId());
+                    templateRepository.findByCategoryId(dto.getCategoryId());
 
             if (dto.getDynamicAttributes() == null) {
                 dto.setDynamicAttributes(new HashMap<>());
