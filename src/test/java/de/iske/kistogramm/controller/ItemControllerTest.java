@@ -12,10 +12,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.time.LocalDate;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -40,6 +38,8 @@ class ItemControllerTest {
 
     private Integer clothingCategoryId;
     private Integer foodCategoryId;
+    private Integer elektronikCategoryId;
+
 
     @BeforeEach
     void setup() {
@@ -47,7 +47,86 @@ class ItemControllerTest {
                 .orElseThrow().getId();
         foodCategoryId = categoryRepository.findByName("Lebensmittel")
                 .orElseThrow().getId();
+        elektronikCategoryId = categoryRepository.findByName("Elektronik")
+                .orElseThrow().getId();
     }
+
+    @Test
+    void shouldCreateNewItemWithCorrectAddedDate() throws Exception {
+        Item item = new Item();
+        item.setName("Shirt");
+        item.setCategoryId(clothingCategoryId);
+        item.setQuantity(1);
+
+        String response = mockMvc.perform(post("/api/items")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(item)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        Item created = objectMapper.readValue(response, Item.class);
+        assertThat(created.getDateAdded()).isEqualTo(LocalDate.now());
+    }
+
+    @Test
+    void shouldUpdateItemAndSetModifiedDate() throws Exception {
+        Item item = new Item();
+        item.setName("Hose");
+        item.setCategoryId(clothingCategoryId);
+        item.setQuantity(1);
+
+        Item saved = objectMapper.readValue(
+                mockMvc.perform(post("/api/items")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(item)))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString(),
+                Item.class
+        );
+        LocalDate dateAdded = saved.getDateAdded();
+
+        saved.setName("Jeans");
+        String updatedResponse = mockMvc.perform(put("/api/items/" + saved.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(saved)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        Item updated = objectMapper.readValue(updatedResponse, Item.class);
+        assertThat(updated.getDateModified()).isEqualTo(LocalDate.now());
+        assertThat(updated.getDateAdded()).isEqualTo(saved.getDateAdded());
+    }
+
+    @Test
+    void shouldLinkTwoItems() throws Exception {
+        Item item1 = new Item();
+        item1.setName("Monitor");
+        item1.setCategoryId(elektronikCategoryId);
+        item1.setQuantity(1);
+
+        Item item2 = new Item();
+        item2.setName("HDMI-Kabel");
+        item2.setCategoryId(elektronikCategoryId);
+        item2.setQuantity(1);
+
+        Item saved1 = objectMapper.readValue(mockMvc.perform(post("/api/items")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(item1)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(), Item.class);
+
+        Item saved2 = objectMapper.readValue(mockMvc.perform(post("/api/items")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(item2)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(), Item.class);
+
+        Item connected = objectMapper.readValue(mockMvc.perform(put("/api/items/" + saved1.getId() + "/related")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(List.of(saved2.getId()))))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(), Item.class);
+
+        assertThat(connected.getRelatedItemIds()).containsExactly(saved2.getId());
+    }
+
 
     @Test
     void whenCreatingClothingItemThenDynamicAttributesShouldContainCustomFields() throws Exception {

@@ -3,6 +3,7 @@ package de.iske.kistogramm.controller;
 import de.iske.kistogramm.dto.Item;
 import de.iske.kistogramm.service.ItemService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,11 +19,13 @@ public class ItemController {
     }
 
     @GetMapping
+    @Transactional(readOnly = true)
     public List<Item> getAllItems() {
         return itemService.getAllItems();
     }
 
     @GetMapping("/{id}")
+    @Transactional(readOnly = true)
     public ResponseEntity<Item> getItemById(@PathVariable Integer id) {
         return itemService.getItemById(id)
                 .map(ResponseEntity::ok)
@@ -30,11 +33,13 @@ public class ItemController {
     }
 
     @PostMapping
+    @Transactional
     public ResponseEntity<Item> createItem(@RequestBody Item item) {
         return ResponseEntity.ok(itemService.createItem(item));
     }
 
     @PutMapping("/{id}")
+    @Transactional
     public ResponseEntity<Item> updateItem(@PathVariable Integer id, @RequestBody Item item) {
         Item updated = itemService.updateItem(id, item);
         return ResponseEntity.ok(updated);
@@ -42,8 +47,16 @@ public class ItemController {
 
 
     @DeleteMapping("/{id}")
+    @Transactional
     public ResponseEntity<Void> deleteItem(@PathVariable Integer id) {
         itemService.deleteItem(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}/related")
+    public ResponseEntity<Item> linkRelatedItems(@PathVariable Integer id,
+                                                 @RequestBody List<Integer> relatedItemIds) {
+        Item updated = itemService.linkRelatedItems(id, relatedItemIds);
+        return ResponseEntity.ok(updated);
     }
 }

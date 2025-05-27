@@ -5,7 +5,6 @@ import de.iske.kistogramm.mapper.ItemMapper;
 import de.iske.kistogramm.model.*;
 import de.iske.kistogramm.repository.*;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -58,7 +57,6 @@ public class ItemService {
         });
     }
 
-    @Transactional
     public Item createItem(Item dto) {
         ItemEntity entity = itemMapper.toEntity(dto);
 
@@ -117,7 +115,6 @@ public class ItemService {
         itemRepository.deleteById(id);
     }
 
-    @Transactional
     public Item updateItem(Integer id, Item updatedItem) {
         ItemEntity entity = itemRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Item not found: " + id));
@@ -149,5 +146,25 @@ public class ItemService {
 
         itemRepository.save(entity);
         return itemMapper.toDto(entity);
+    }
+
+    public Item linkRelatedItems(Integer itemId, List<Integer> relatedItemIds) {
+        ItemEntity item = itemRepository.findById(itemId)
+                .orElseThrow(() -> new IllegalArgumentException("Item not found: " + itemId));
+
+        List<ItemEntity> relatedItems = itemRepository.findAllById(relatedItemIds);
+
+        // Verknüpfung in beide Richtungen, falls bidirektional nötig
+        for (ItemEntity related : relatedItems) {
+            item.getRelatedItems().add(related);
+            related.getRelatedItems().add(item);
+        }
+
+        item.setDateModified(LocalDate.now());
+
+        itemRepository.saveAll(relatedItems);
+        ItemEntity saved = itemRepository.save(item);
+
+        return itemMapper.toDto(saved);
     }
 }
