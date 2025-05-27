@@ -1,0 +1,219 @@
+package de.iske.kistogramm.model;
+
+import com.google.common.base.MoreObjects;
+import com.google.common.base.MoreObjects.ToStringHelper;
+import jakarta.persistence.*;
+
+import java.time.LocalDate;
+import java.util.*;
+
+@Entity
+@Table(name = "items")
+public class ItemEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    private String name;
+    private String description;
+
+    private LocalDate purchaseDate;
+    private Double purchasePrice;
+    private Integer quantity;
+
+    private LocalDate dateAdded;
+    private LocalDate dateModified;
+
+    @ManyToOne
+    @JoinColumn(name = "category_id")
+    private CategoryEntity category;
+
+    @ManyToOne
+    @JoinColumn(name = "storage_id")
+    private StorageEntity storage;
+
+    @ManyToMany
+    @JoinTable(
+            name = "item_tags",
+            joinColumns = @JoinColumn(name = "item_id"),
+            inverseJoinColumns = @JoinColumn(name = "tag_id")
+    )
+    private Set<TagEntity> tags = new HashSet<>();
+
+    @OneToMany
+    @JoinTable(
+            name = "item_images",
+            joinColumns = @JoinColumn(name = "item_id"),
+            inverseJoinColumns = @JoinColumn(name = "image_id")
+    )
+    private Set<ImageEntity> images = new HashSet<>();
+
+    @ManyToMany
+    @JoinTable(
+            name = "item_related",
+            joinColumns = @JoinColumn(name = "item_id"),
+            inverseJoinColumns = @JoinColumn(name = "related_item_id")
+    )
+    private Set<ItemEntity> relatedItems = new HashSet<>();
+
+    @ElementCollection
+    @CollectionTable(name = "item_attributes", joinColumns = @JoinColumn(name = "item_id"))
+    @MapKeyColumn(name = "attribute_key")
+    @Column(name = "attribute_value")
+    private Map<String, String> dynamicAttributes = new HashMap<>();
+
+    // Getter & Setter
+    public Integer getId() {
+        return id;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public LocalDate getPurchaseDate() {
+        return purchaseDate;
+    }
+
+    public void setPurchaseDate(LocalDate purchaseDate) {
+        this.purchaseDate = purchaseDate;
+    }
+
+    public Double getPurchasePrice() {
+        return purchasePrice;
+    }
+
+    public void setPurchasePrice(Double purchasePrice) {
+        this.purchasePrice = purchasePrice;
+    }
+
+    public Integer getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(Integer quantity) {
+        this.quantity = quantity;
+    }
+
+    public CategoryEntity getCategory() {
+        return category;
+    }
+
+    public void setCategory(CategoryEntity category) {
+        this.category = category;
+    }
+
+    public StorageEntity getStorage() {
+        return storage;
+    }
+
+    public void setStorage(StorageEntity storage) {
+        this.storage = storage;
+    }
+
+    public Set<ItemEntity> getRelatedItems() {
+        return relatedItems;
+    }
+
+    public void setRelatedItems(Set<ItemEntity> relatedItems) {
+        this.relatedItems = relatedItems;
+    }
+
+    public Set<TagEntity> getTags() {
+        return tags;
+    }
+
+    public void setTags(Set<TagEntity> tags) {
+        this.tags = tags;
+    }
+
+    public Set<ImageEntity> getImages() {
+        return images;
+    }
+
+    public void setImages(Set<ImageEntity> images) {
+        this.images = images;
+    }
+
+    public Map<String, String> getDynamicAttributes() {
+        return dynamicAttributes;
+    }
+
+    public void setDynamicAttributes(Map<String, String> dynamicAttributes) {
+        this.dynamicAttributes = dynamicAttributes;
+    }
+
+    public LocalDate getDateAdded() {
+        return dateAdded;
+    }
+
+    public void setDateAdded(LocalDate dateAdded) {
+        this.dateAdded = dateAdded;
+    }
+
+    public LocalDate getDateModified() {
+        return dateModified;
+    }
+
+    public void setDateModified(LocalDate dateModified) {
+        this.dateModified = dateModified;
+    }
+
+    // equals & hashCode
+    @Override
+    public boolean equals(final Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (!(obj instanceof ItemEntity that)) {
+            return false;
+        }
+        return getId() != null && Objects.equals(getId(), that.getId());
+    }
+
+    @Override
+    public int hashCode() {
+        return 42; // id is DB-generated
+    }
+
+    // toString
+    @Override
+    public String toString() {
+        return toStringHelper().toString();
+    }
+
+    protected ToStringHelper toStringHelper() {
+        return MoreObjects.toStringHelper(this)
+                .add("id", id)
+                .add("name", name)
+                .add("description", description)
+                .add("purchaseDate", purchaseDate)
+                .add("purchasePrice", purchasePrice)
+                .add("quantity", quantity)
+                .add("category", category != null ? category.getId() : null)
+                .add("storage", storage != null ? storage.getId() : null)
+                .add("relatedItems", relatedItems.size())
+                .add("tags", tags.size())
+                .add("images", images.size())
+                .add("dynamicAttributes", dynamicAttributes)
+                .add("dateAdded", dateAdded)
+                .add("dateModified", dateModified);
+    }
+}

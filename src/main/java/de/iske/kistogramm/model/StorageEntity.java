@@ -1,0 +1,136 @@
+package de.iske.kistogramm.model;
+
+import com.google.common.base.MoreObjects;
+import jakarta.persistence.*;
+
+import java.time.LocalDate;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
+
+@Entity
+@Table(name = "storages")
+public class StorageEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    private String name;
+    private String description;
+
+    @ManyToOne
+    private RoomEntity room;
+
+    @ManyToOne
+    private StorageEntity parentStorage;
+
+    @OneToMany(mappedBy = "parentStorage")
+    private Set<StorageEntity> subStorages = new HashSet<>();
+
+    @ManyToMany
+    @JoinTable(name = "storage_tags",
+            joinColumns = @JoinColumn(name = "storage_id"),
+            inverseJoinColumns = @JoinColumn(name = "tag_id"))
+    private Set<TagEntity> tags = new HashSet<>();
+
+    private LocalDate dateAdded;
+    private LocalDate dateModified;
+
+    public Integer getId() {
+        return id;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public RoomEntity getRoom() {
+        return room;
+    }
+
+    public void setRoom(RoomEntity room) {
+        this.room = room;
+    }
+
+    public StorageEntity getParentStorage() {
+        return parentStorage;
+    }
+
+    public void setParentStorage(StorageEntity parentStorage) {
+        this.parentStorage = parentStorage;
+    }
+
+    public Set<StorageEntity> getSubStorages() {
+        return subStorages;
+    }
+
+    public void setSubStorages(Set<StorageEntity> subStorages) {
+        this.subStorages = subStorages;
+    }
+
+    public Set<TagEntity> getTags() {
+        return tags;
+    }
+
+    public void setTags(Set<TagEntity> tags) {
+        this.tags = tags;
+    }
+
+    public LocalDate getDateAdded() {
+        return dateAdded;
+    }
+
+    public void setDateAdded(LocalDate dateAdded) {
+        this.dateAdded = dateAdded;
+    }
+
+    public LocalDate getDateModified() {
+        return dateModified;
+    }
+
+    public void setDateModified(LocalDate dateModified) {
+        this.dateModified = dateModified;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (!(obj instanceof StorageEntity that)) return false;
+        return getId() != null && Objects.equals(getId(), that.getId());
+    }
+
+    @Override
+    public int hashCode() {
+        return 42;
+    }
+
+    @Override
+    public String toString() {
+        return MoreObjects.toStringHelper(this)
+                .add("id", id)
+                .add("name", name)
+                .add("description", description)
+                .add("room", room)
+                .add("parentStorage", parentStorage)
+                .add("dateAdded", dateAdded)
+                .add("dateModified", dateModified)
+                .toString();
+    }
+}
