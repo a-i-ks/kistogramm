@@ -116,4 +116,38 @@ public class ItemService {
     public void deleteItem(Integer id) {
         itemRepository.deleteById(id);
     }
+
+    @Transactional
+    public Item updateItem(Integer id, Item updatedItem) {
+        ItemEntity entity = itemRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Item not found: " + id));
+
+        // Update der Felder
+        entity.setName(updatedItem.getName());
+        entity.setDescription(updatedItem.getDescription());
+        entity.setPurchaseDate(updatedItem.getPurchaseDate());
+        entity.setPurchasePrice(updatedItem.getPurchasePrice());
+        entity.setQuantity(updatedItem.getQuantity());
+
+        // Kategorie ändern
+        if (!Objects.equals(entity.getCategory().getId(), updatedItem.getCategoryId())) {
+            CategoryEntity newCategory = categoryRepository.findById(updatedItem.getCategoryId())
+                    .orElseThrow(() -> new IllegalArgumentException("Category not found: " + updatedItem.getCategoryId()));
+            entity.setCategory(newCategory);
+
+            // Dynamische Felder neu initialisieren (nicht löschen!)
+            Map<String, String> newAttrs = new HashMap<>(entity.getDynamicAttributes());
+
+            List<CategoryAttributeTemplateEntity> templates = templateRepository.findByCategoryId(newCategory.getId());
+
+            for (CategoryAttributeTemplateEntity template : templates) {
+                newAttrs.putIfAbsent(template.getAttributeName(), "");
+            }
+
+            entity.setDynamicAttributes(newAttrs);
+        }
+
+        itemRepository.save(entity);
+        return itemMapper.toDto(entity);
+    }
 }
