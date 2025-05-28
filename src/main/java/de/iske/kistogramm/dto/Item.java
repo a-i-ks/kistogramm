@@ -1,6 +1,7 @@
 package de.iske.kistogramm.dto;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 
 public class Item {
@@ -11,8 +12,8 @@ public class Item {
     private LocalDate purchaseDate;
     private Double purchasePrice;
     private Integer quantity;
-    private LocalDate dateAdded;
-    private LocalDate dateModified;
+    private LocalDateTime dateAdded;
+    private LocalDateTime dateModified;
 
     private Integer categoryId;
     private Integer storageId;
@@ -70,19 +71,19 @@ public class Item {
         this.quantity = quantity;
     }
 
-    public LocalDate getDateAdded() {
+    public LocalDateTime getDateAdded() {
         return dateAdded;
     }
 
-    public void setDateAdded(LocalDate dateAdded) {
+    public void setDateAdded(LocalDateTime dateAdded) {
         this.dateAdded = dateAdded;
     }
 
-    public LocalDate getDateModified() {
+    public LocalDateTime getDateModified() {
         return dateModified;
     }
 
-    public void setDateModified(LocalDate dateModified) {
+    public void setDateModified(LocalDateTime dateModified) {
         this.dateModified = dateModified;
     }
 

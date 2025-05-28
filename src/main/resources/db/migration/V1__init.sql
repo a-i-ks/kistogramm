@@ -8,8 +8,8 @@
 CREATE TABLE IF NOT EXISTS categories (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    date_added DATE,
-    date_modified DATE
+    date_added TIMESTAMP,
+    date_modified TIMESTAMP
 );
 
 -- Rooms
@@ -17,24 +17,24 @@ CREATE TABLE IF NOT EXISTS rooms (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     description TEXT,
-    date_added DATE,
-    date_modified DATE
+    date_added TIMESTAMP,
+    date_modified TIMESTAMP
 );
 
 -- Tags
 CREATE TABLE IF NOT EXISTS tags (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    date_added DATE,
-    date_modified DATE
+    date_added TIMESTAMP,
+    date_modified TIMESTAMP
 );
 
 -- Images (BYTEA statt BLOB für H2)
 CREATE TABLE IF NOT EXISTS images (
     id SERIAL PRIMARY KEY,
     data BYTEA NOT NULL,
-    date_added DATE,
-    date_modified DATE
+    date_added TIMESTAMP,
+    date_modified TIMESTAMP
 );
 
 -- Storages
@@ -45,8 +45,8 @@ CREATE TABLE IF NOT EXISTS storages (
     room_id INT,
     parent_storage_id INT,
     image_id INT,
-    date_added DATE,
-    date_modified DATE,
+    date_added TIMESTAMP,
+    date_modified TIMESTAMP,
     FOREIGN KEY (room_id) REFERENCES rooms(id),
     FOREIGN KEY (parent_storage_id) REFERENCES storages(id),
     FOREIGN KEY (image_id) REFERENCES images(id)
@@ -62,8 +62,8 @@ CREATE TABLE IF NOT EXISTS items (
     quantity INT,
     category_id INT,
     storage_id INT,
-    date_added DATE,
-    date_modified DATE,
+    date_added TIMESTAMP,
+    date_modified TIMESTAMP,
     FOREIGN KEY (category_id) REFERENCES categories(id),
     FOREIGN KEY (storage_id) REFERENCES storages(id)
 );
@@ -118,7 +118,7 @@ CREATE TABLE IF NOT EXISTS category_attribute_templates (
     id SERIAL PRIMARY KEY,
     category_id INT NOT NULL,
     attribute_name VARCHAR(255) NOT NULL,
-    date_added DATE,
-    date_modified DATE,
+    date_added TIMESTAMP,
+    date_modified TIMESTAMP,
     FOREIGN KEY (category_id) REFERENCES categories(id)
 );

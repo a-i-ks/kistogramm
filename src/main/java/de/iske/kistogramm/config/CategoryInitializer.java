@@ -9,7 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -41,8 +41,8 @@ public class CategoryInitializer {
             } else {
                 category = new CategoryEntity();
                 category.setName(entry.getName());
-                category.setDateAdded(LocalDate.now());
-                category.setDateModified(LocalDate.now());
+                category.setDateAdded(LocalDateTime.now());
+                category.setDateModified(LocalDateTime.now());
                 category = categoryRepository.save(category);
                 LOG.info("Added new default category: {}", category.getName());
             }
@@ -54,8 +54,8 @@ public class CategoryInitializer {
                         CategoryAttributeTemplateEntity template = new CategoryAttributeTemplateEntity();
                         template.setCategory(category);
                         template.setAttributeName(attr);
-                        template.setDateAdded(LocalDate.now());
-                        template.setDateModified(LocalDate.now());
+                        template.setDateAdded(LocalDateTime.now());
+                        template.setDateModified(LocalDateTime.now());
                         categoryAttributeTemplateRepository.save(template);
                         LOG.info("Added new default attribute for category \"{}\": {}", category.getName(), template.getAttributeName());
                     }

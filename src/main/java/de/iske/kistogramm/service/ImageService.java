@@ -6,7 +6,7 @@ import de.iske.kistogramm.model.ImageEntity;
 import de.iske.kistogramm.repository.ImageRepository;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -34,8 +34,8 @@ public class ImageService {
 
     public Image createImage(Image image) {
         ImageEntity entity = imageMapper.toEntity(image);
-        entity.setDateAdded(LocalDate.now());
-        entity.setDateModified(LocalDate.now());
+        entity.setDateAdded(LocalDateTime.now());
+        entity.setDateModified(LocalDateTime.now());
         return imageMapper.toDto(imageRepository.save(entity));
     }
 

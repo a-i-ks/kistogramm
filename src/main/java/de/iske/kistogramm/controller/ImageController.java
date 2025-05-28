@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -47,8 +47,8 @@ public class ImageController {
     public ResponseEntity<Image> uploadImage(@RequestParam("file") MultipartFile file) throws IOException {
         Image image = new Image();
         image.setData(file.getBytes());
-        image.setDateAdded(LocalDate.now());
-        image.setDateModified(LocalDate.now());
+        image.setDateAdded(LocalDateTime.now());
+        image.setDateModified(LocalDateTime.now());
         return ResponseEntity.ok(imageService.createImage(image));
     }
 }

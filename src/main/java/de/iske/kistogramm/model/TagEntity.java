@@ -3,7 +3,7 @@ package de.iske.kistogramm.model;
 import com.google.common.base.MoreObjects;
 import jakarta.persistence.*;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Objects;
 
 @Entity
@@ -15,8 +15,8 @@ public class TagEntity {
     private Integer id;
 
     private String name;
-    private LocalDate dateAdded;
-    private LocalDate dateModified;
+    private LocalDateTime dateAdded;
+    private LocalDateTime dateModified;
 
     public Integer getId() {
         return id;
@@ -34,19 +34,19 @@ public class TagEntity {
         this.name = name;
     }
 
-    public LocalDate getDateAdded() {
+    public LocalDateTime getDateAdded() {
         return dateAdded;
     }
 
-    public void setDateAdded(LocalDate dateAdded) {
+    public void setDateAdded(LocalDateTime dateAdded) {
         this.dateAdded = dateAdded;
     }
 
-    public LocalDate getDateModified() {
+    public LocalDateTime getDateModified() {
         return dateModified;
     }
 
-    public void setDateModified(LocalDate dateModified) {
+    public void setDateModified(LocalDateTime dateModified) {
         this.dateModified = dateModified;
     }
 

@@ -30,8 +30,8 @@ class ItemServiceTest {
     void setup() {
         CategoryEntity category = new CategoryEntity();
         category.setName("TestCategory");
-        category.setDateAdded(java.time.LocalDate.now());
-        category.setDateModified(java.time.LocalDate.now());
+        category.setDateAdded(java.time.LocalDateTime.now());
+        category.setDateModified(java.time.LocalDateTime.now());
         testCategoryId = categoryRepository.save(category).getId();
     }
 

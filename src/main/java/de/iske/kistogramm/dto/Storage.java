@@ -2,7 +2,7 @@ package de.iske.kistogramm.dto;
 
 import com.google.common.base.MoreObjects;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 
@@ -14,8 +14,8 @@ public class Storage {
     private Integer roomId;
     private Integer parentStorageId;
     private List<Integer> tagIds;
-    private LocalDate dateAdded;
-    private LocalDate dateModified;
+    private LocalDateTime dateAdded;
+    private LocalDateTime dateModified;
 
     public Integer getId() {
         return id;
@@ -65,19 +65,19 @@ public class Storage {
         this.tagIds = tagIds;
     }
 
-    public LocalDate getDateAdded() {
+    public LocalDateTime getDateAdded() {
         return dateAdded;
     }
 
-    public void setDateAdded(LocalDate dateAdded) {
+    public void setDateAdded(LocalDateTime dateAdded) {
         this.dateAdded = dateAdded;
     }
 
-    public LocalDate getDateModified() {
+    public LocalDateTime getDateModified() {
         return dateModified;
     }
 
-    public void setDateModified(LocalDate dateModified) {
+    public void setDateModified(LocalDateTime dateModified) {
         this.dateModified = dateModified;
     }
 

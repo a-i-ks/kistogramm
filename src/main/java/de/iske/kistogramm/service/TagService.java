@@ -6,7 +6,7 @@ import de.iske.kistogramm.model.TagEntity;
 import de.iske.kistogramm.repository.TagRepository;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -34,8 +34,8 @@ public class TagService {
 
     public Tag createTag(Tag tag) {
         TagEntity entity = tagMapper.toEntity(tag);
-        entity.setDateAdded(LocalDate.now());
-        entity.setDateModified(LocalDate.now());
+        entity.setDateAdded(LocalDateTime.now());
+        entity.setDateModified(LocalDateTime.now());
         return tagMapper.toDto(tagRepository.save(entity));
     }
 

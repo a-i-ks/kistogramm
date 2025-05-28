@@ -12,12 +12,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(properties = "spring.profiles.active=test")
@@ -38,7 +37,7 @@ class ItemControllerTest {
 
     private Integer clothingCategoryId;
     private Integer foodCategoryId;
-    private Integer elektronikCategoryId;
+    private Integer electronicCategoryId;
 
 
     @BeforeEach
@@ -47,12 +46,12 @@ class ItemControllerTest {
                 .orElseThrow().getId();
         foodCategoryId = categoryRepository.findByName("Lebensmittel")
                 .orElseThrow().getId();
-        elektronikCategoryId = categoryRepository.findByName("Elektronik")
+        electronicCategoryId = categoryRepository.findByName("Elektronik")
                 .orElseThrow().getId();
     }
 
     @Test
-    void shouldCreateNewItemWithCorrectAddedDate() throws Exception {
+    void shouldCreateNewItemWithCorrectAddedAndModifiedDate() throws Exception {
         Item item = new Item();
         item.setName("Shirt");
         item.setCategoryId(clothingCategoryId);
@@ -65,7 +64,9 @@ class ItemControllerTest {
                 .andReturn().getResponse().getContentAsString();
 
         Item created = objectMapper.readValue(response, Item.class);
-        assertThat(created.getDateAdded()).isEqualTo(LocalDate.now());
+        assertThat(created.getDateAdded()).isBetween(LocalDateTime.now().minusSeconds(5), LocalDateTime.now());
+        assertThat(created.getDateModified()).isBetween(LocalDateTime.now().minusSeconds(5), LocalDateTime.now());
+
     }
 
     @Test
@@ -83,7 +84,6 @@ class ItemControllerTest {
                         .andReturn().getResponse().getContentAsString(),
                 Item.class
         );
-        LocalDate dateAdded = saved.getDateAdded();
 
         saved.setName("Jeans");
         String updatedResponse = mockMvc.perform(put("/api/items/" + saved.getId())
@@ -93,38 +93,57 @@ class ItemControllerTest {
                 .andReturn().getResponse().getContentAsString();
 
         Item updated = objectMapper.readValue(updatedResponse, Item.class);
-        assertThat(updated.getDateModified()).isEqualTo(LocalDate.now());
-        assertThat(updated.getDateAdded()).isEqualTo(saved.getDateAdded());
+        assertThat(updated.getDateModified()).isBetween(LocalDateTime.now().minusSeconds(5), LocalDateTime.now());
+        assertThat(updated.getDateAdded()).isEqualToIgnoringNanos(saved.getDateAdded());
     }
 
     @Test
-    void shouldLinkTwoItems() throws Exception {
+    void shouldLinkTwoItemsAndVerifyBothSides() throws Exception {
+        // Schritt 1: Zwei Items anlegen
         Item item1 = new Item();
-        item1.setName("Monitor");
-        item1.setCategoryId(elektronikCategoryId);
+        item1.setName("Beamer");
+        item1.setCategoryId(electronicCategoryId);
         item1.setQuantity(1);
 
         Item item2 = new Item();
         item2.setName("HDMI-Kabel");
-        item2.setCategoryId(elektronikCategoryId);
+        item2.setCategoryId(electronicCategoryId);
         item2.setQuantity(1);
 
         Item saved1 = objectMapper.readValue(mockMvc.perform(post("/api/items")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(item1)))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(), Item.class);
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Item.class);
 
         Item saved2 = objectMapper.readValue(mockMvc.perform(post("/api/items")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(item2)))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(), Item.class);
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Item.class);
 
-        Item connected = objectMapper.readValue(mockMvc.perform(put("/api/items/" + saved1.getId() + "/related")
+        // Schritt 2: In Relation setzen
+        mockMvc.perform(put("/api/items/" + saved1.getId() + "/related")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(List.of(saved2.getId()))))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(), Item.class);
+                .andExpect(status().isOk());
 
-        assertThat(connected.getRelatedItemIds()).containsExactly(saved2.getId());
+        // Schritt 3: Reload Items
+        Item reloaded1 = objectMapper.readValue(mockMvc.perform(get("/api/items/" + saved1.getId()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Item.class);
+
+        Item reloaded2 = objectMapper.readValue(mockMvc.perform(get("/api/items/" + saved2.getId()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Item.class);
+
+        // Schritt 4: Beide referenzieren einander
+        assertThat(reloaded1.getRelatedItemIds()).contains(saved2.getId());
+        assertThat(reloaded2.getRelatedItemIds()).contains(saved1.getId());
+
+        // Schritt 5: Änderungsdatum gesetzt (heute)
+        assertThat(reloaded1.getDateModified()).isBetween(LocalDateTime.now().minusSeconds(5), LocalDateTime.now());
+        assertThat(reloaded2.getDateModified()).isBetween(LocalDateTime.now().minusSeconds(5), LocalDateTime.now());
     }
 
 

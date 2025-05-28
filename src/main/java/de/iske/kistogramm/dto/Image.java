@@ -1,6 +1,6 @@
 package de.iske.kistogramm.dto;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -8,8 +8,8 @@ public class Image {
 
     private Integer id;
     private byte[] data;
-    private LocalDate dateAdded;
-    private LocalDate dateModified;
+    private LocalDateTime dateAdded;
+    private LocalDateTime dateModified;
 
     public Integer getId() {
         return id;
@@ -27,19 +27,19 @@ public class Image {
         this.data = data;
     }
 
-    public LocalDate getDateAdded() {
+    public LocalDateTime getDateAdded() {
         return dateAdded;
     }
 
-    public void setDateAdded(LocalDate dateAdded) {
+    public void setDateAdded(LocalDateTime dateAdded) {
         this.dateAdded = dateAdded;
     }
 
-    public LocalDate getDateModified() {
+    public LocalDateTime getDateModified() {
         return dateModified;
     }
 
-    public void setDateModified(LocalDate dateModified) {
+    public void setDateModified(LocalDateTime dateModified) {
         this.dateModified = dateModified;
     }
 

@@ -5,6 +5,7 @@ import com.google.common.base.MoreObjects.ToStringHelper;
 import jakarta.persistence.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Entity
@@ -22,8 +23,8 @@ public class ItemEntity {
     private Double purchasePrice;
     private Integer quantity;
 
-    private LocalDate dateAdded;
-    private LocalDate dateModified;
+    private LocalDateTime dateAdded;
+    private LocalDateTime dateModified;
 
     @ManyToOne
     @JoinColumn(name = "category_id")
@@ -160,19 +161,19 @@ public class ItemEntity {
         this.dynamicAttributes = dynamicAttributes;
     }
 
-    public LocalDate getDateAdded() {
+    public LocalDateTime getDateAdded() {
         return dateAdded;
     }
 
-    public void setDateAdded(LocalDate dateAdded) {
+    public void setDateAdded(LocalDateTime dateAdded) {
         this.dateAdded = dateAdded;
     }
 
-    public LocalDate getDateModified() {
+    public LocalDateTime getDateModified() {
         return dateModified;
     }
 
-    public void setDateModified(LocalDate dateModified) {
+    public void setDateModified(LocalDateTime dateModified) {
         this.dateModified = dateModified;
     }
 

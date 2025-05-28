@@ -3,7 +3,7 @@ package de.iske.kistogramm.model;
 import com.google.common.base.MoreObjects;
 import jakarta.persistence.*;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -34,8 +34,8 @@ public class StorageEntity {
             inverseJoinColumns = @JoinColumn(name = "tag_id"))
     private Set<TagEntity> tags = new HashSet<>();
 
-    private LocalDate dateAdded;
-    private LocalDate dateModified;
+    private LocalDateTime dateAdded;
+    private LocalDateTime dateModified;
 
     public Integer getId() {
         return id;
@@ -93,19 +93,19 @@ public class StorageEntity {
         this.tags = tags;
     }
 
-    public LocalDate getDateAdded() {
+    public LocalDateTime getDateAdded() {
         return dateAdded;
     }
 
-    public void setDateAdded(LocalDate dateAdded) {
+    public void setDateAdded(LocalDateTime dateAdded) {
         this.dateAdded = dateAdded;
     }
 
-    public LocalDate getDateModified() {
+    public LocalDateTime getDateModified() {
         return dateModified;
     }
 
-    public void setDateModified(LocalDate dateModified) {
+    public void setDateModified(LocalDateTime dateModified) {
         this.dateModified = dateModified;
     }
 

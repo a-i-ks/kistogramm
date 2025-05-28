@@ -6,7 +6,7 @@ import de.iske.kistogramm.model.RoomEntity;
 import de.iske.kistogramm.repository.RoomRepository;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -34,8 +34,8 @@ public class RoomService {
 
     public Room createRoom(Room room) {
         RoomEntity entity = roomMapper.toEntity(room);
-        entity.setDateAdded(LocalDate.now());
-        entity.setDateModified(LocalDate.now());
+        entity.setDateAdded(LocalDateTime.now());
+        entity.setDateModified(LocalDateTime.now());
         return roomMapper.toDto(roomRepository.save(entity));
     }
 

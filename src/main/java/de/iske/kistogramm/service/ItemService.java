@@ -6,7 +6,7 @@ import de.iske.kistogramm.model.*;
 import de.iske.kistogramm.repository.*;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -105,8 +105,8 @@ public class ItemService {
 
         // dynamic attributes
         entity.setDynamicAttributes(dto.getDynamicAttributes());
-        entity.setDateAdded(LocalDate.now());
-        entity.setDateModified(LocalDate.now());
+        entity.setDateAdded(LocalDateTime.now());
+        entity.setDateModified(LocalDateTime.now());
 
         return itemMapper.toDto(itemRepository.save(entity));
     }
@@ -160,7 +160,7 @@ public class ItemService {
             related.getRelatedItems().add(item);
         }
 
-        item.setDateModified(LocalDate.now());
+        item.setDateModified(LocalDateTime.now());
 
         itemRepository.saveAll(relatedItems);
         ItemEntity saved = itemRepository.save(item);

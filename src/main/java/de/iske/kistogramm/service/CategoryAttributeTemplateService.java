@@ -7,7 +7,7 @@ import de.iske.kistogramm.repository.CategoryAttributeTemplateRepository;
 import de.iske.kistogramm.repository.CategoryRepository;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -34,8 +34,8 @@ public class CategoryAttributeTemplateService {
     public CategoryAttributeTemplate createTemplate(CategoryAttributeTemplate dto) {
         CategoryAttributeTemplateEntity entity = mapper.toEntity(dto);
         entity.setCategory(categoryRepository.findById(dto.getCategoryId()).orElseThrow());
-        entity.setDateAdded(LocalDate.now());
-        entity.setDateModified(LocalDate.now());
+        entity.setDateAdded(LocalDateTime.now());
+        entity.setDateModified(LocalDateTime.now());
         return mapper.toDto(repository.save(entity));
     }
 

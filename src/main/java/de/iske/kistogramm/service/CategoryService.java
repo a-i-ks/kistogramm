@@ -6,7 +6,7 @@ import de.iske.kistogramm.model.CategoryEntity;
 import de.iske.kistogramm.repository.CategoryRepository;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -34,8 +34,8 @@ public class CategoryService {
 
     public Category createCategory(Category category) {
         CategoryEntity entity = categoryMapper.toEntity(category);
-        entity.setDateAdded(LocalDate.now());
-        entity.setDateModified(LocalDate.now());
+        entity.setDateAdded(LocalDateTime.now());
+        entity.setDateModified(LocalDateTime.now());
         return categoryMapper.toDto(categoryRepository.save(entity));
     }
 

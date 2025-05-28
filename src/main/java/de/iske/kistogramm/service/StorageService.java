@@ -11,7 +11,7 @@ import de.iske.kistogramm.repository.TagRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -82,8 +82,8 @@ public class StorageService {
             entity.setTags(tags);
         }
 
-        entity.setDateAdded(LocalDate.now());
-        entity.setDateModified(LocalDate.now());
+        entity.setDateAdded(LocalDateTime.now());
+        entity.setDateModified(LocalDateTime.now());
 
         return storageMapper.toDto(storageRepository.save(entity));
     }
