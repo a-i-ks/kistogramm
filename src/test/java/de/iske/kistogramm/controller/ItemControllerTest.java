@@ -2,6 +2,7 @@ package de.iske.kistogramm.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.iske.kistogramm.dto.Item;
+import de.iske.kistogramm.dto.Storage;
 import de.iske.kistogramm.repository.CategoryRepository;
 import de.iske.kistogramm.repository.ItemRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -531,6 +532,160 @@ class ItemControllerTest {
         mockMvc.perform(get("/api/images/" + imageToDelete))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    void shouldAssignStorageToItem() throws Exception {
+        // Schritt 1: Erstelle ein Storage
+        Storage storage = new Storage();
+        storage.setName("Lager A");
+        storage.setDescription("Im Keller");
+
+        Storage savedStorage = objectMapper.readValue(
+                mockMvc.perform(post("/api/storages")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(storage)))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString(),
+                Storage.class
+        );
+
+        // Schritt 2: Erstelle ein Item
+        Item item = new Item();
+        item.setName("Bohrmaschine");
+
+        Item savedItem = objectMapper.readValue(
+                mockMvc.perform(post("/api/items")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(item)))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString(),
+                Item.class
+        );
+
+        // Schritt 3: Weise dem Item das Storage zu
+        savedItem.setStorageId(savedStorage.getId());
+
+        Item updatedItem = objectMapper.readValue(
+                mockMvc.perform(put("/api/items/" + savedItem.getId())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(savedItem)))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString(),
+                Item.class
+        );
+
+        // Schritt 4: Überprüfe, ob das Storage korrekt zugewiesen wurde
+        assertThat(updatedItem.getStorageId()).isEqualTo(savedStorage.getId());
+    }
+
+    @Test
+    void shouldAssignDifferentStorageToItem() throws Exception {
+        // Storage 1 erstellen
+        Storage storageA = new Storage();
+        storageA.setName("Regal A");
+
+        Storage savedStorageA = objectMapper.readValue(
+                mockMvc.perform(post("/api/storages")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(storageA)))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString(),
+                Storage.class
+        );
+
+        // Storage 2 erstellen
+        Storage storageB = new Storage();
+        storageB.setName("Regal B");
+
+        Storage savedStorageB = objectMapper.readValue(
+                mockMvc.perform(post("/api/storages")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(storageB)))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString(),
+                Storage.class
+        );
+
+        // Item mit Storage A anlegen
+        Item item = new Item();
+        item.setName("Kabeltrommel");
+        item.setStorageId(savedStorageA.getId());
+
+        Item savedItem = objectMapper.readValue(
+                mockMvc.perform(post("/api/items")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(item)))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString(),
+                Item.class
+        );
+
+        // Storage von Item auf Storage B ändern
+        savedItem.setStorageId(savedStorageB.getId());
+
+        Item updatedItem = objectMapper.readValue(
+                mockMvc.perform(put("/api/items/" + savedItem.getId())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(savedItem)))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString(),
+                Item.class
+        );
+
+        // Verifizieren
+        assertThat(updatedItem.getStorageId()).isEqualTo(savedStorageB.getId());
+        assertThat(updatedItem.getStorageId()).isNotEqualTo(savedStorageA.getId());
+        assertThat(updatedItem.getDateModified()).isNotNull();
+    }
+
+
+    @Test
+    void shouldUnassignStorageFromItem() throws Exception {
+        // Schritt 1: Erstelle ein Storage
+        Storage storage = new Storage();
+        storage.setName("Werkbank");
+        storage.setDescription("In der Garage");
+
+        Storage savedStorage = objectMapper.readValue(
+                mockMvc.perform(post("/api/storages")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(storage)))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString(),
+                Storage.class
+        );
+
+        // Schritt 2: Erstelle ein Item mit zugewiesenem Storage
+        Item item = new Item();
+        item.setName("Schraubendreher");
+        item.setStorageId(savedStorage.getId());
+
+        Item savedItem = objectMapper.readValue(
+                mockMvc.perform(post("/api/items")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(item)))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString(),
+                Item.class
+        );
+
+        // Schritt 3: Entferne das Storage (setze storageId = null)
+        savedItem.setStorageId(null);
+
+        Item updatedItem = objectMapper.readValue(
+                mockMvc.perform(put("/api/items/" + savedItem.getId())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(savedItem)))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString(),
+                Item.class
+        );
+
+        // Schritt 4: Überprüfe, dass kein Storage mehr zugewiesen ist
+        assertThat(updatedItem.getStorageId()).isNull();
+        assertThat(updatedItem.getDateModified()).isNotNull();
+    }
+
 
 
 }

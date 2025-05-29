@@ -121,33 +121,55 @@ public class ItemService {
         ItemEntity entity = itemRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Item not found: " + id));
 
-        // update attributes
+        // Update Basisattribute
         entity.setName(updatedItem.getName());
         entity.setDescription(updatedItem.getDescription());
         entity.setPurchaseDate(updatedItem.getPurchaseDate());
         entity.setPurchasePrice(updatedItem.getPurchasePrice());
         entity.setQuantity(updatedItem.getQuantity());
+        entity.setDateModified(LocalDateTime.now());
 
-        // Kategorie ändern
-        if (!Objects.equals(entity.getCategory().getId(), updatedItem.getCategoryId())) {
-            CategoryEntity newCategory = categoryRepository.findById(updatedItem.getCategoryId())
-                    .orElseThrow(() -> new IllegalArgumentException("Category not found: " + updatedItem.getCategoryId()));
-            entity.setCategory(newCategory);
-
-            // Dynamische Felder neu initialisieren (nicht löschen!)
-            Map<String, String> newAttrs = new HashMap<>(entity.getDynamicAttributes());
-
-            List<CategoryAttributeTemplateEntity> templates = templateRepository.findByCategoryId(newCategory.getId());
-
-            for (CategoryAttributeTemplateEntity template : templates) {
-                newAttrs.putIfAbsent(template.getAttributeName(), "");
-            }
-
-            entity.setDynamicAttributes(newAttrs);
+        // Custom Attribute aktualisieren (auch ohne Kategorie erlaubt)
+        if (updatedItem.getDynamicAttributes() != null) {
+            entity.setDynamicAttributes(updatedItem.getDynamicAttributes());
         }
 
-        itemRepository.save(entity);
-        return itemMapper.toDto(entity);
+        // Kategorie zuweisen oder ändern
+        if (updatedItem.getCategoryId() != null) {
+            CategoryEntity newCategory = categoryRepository.findById(updatedItem.getCategoryId())
+                    .orElseThrow(() -> new IllegalArgumentException("Category not found: " + updatedItem.getCategoryId()));
+
+            boolean changed = entity.getCategory() == null || !Objects.equals(entity.getCategory().getId(), updatedItem.getCategoryId());
+
+            if (changed) {
+                entity.setCategory(newCategory);
+
+                // Templates auslesen
+                List<CategoryAttributeTemplateEntity> templates = templateRepository.findByCategoryId(newCategory.getId());
+
+                Map<String, String> currentAttrs = new HashMap<>(entity.getDynamicAttributes());
+                for (CategoryAttributeTemplateEntity template : templates) {
+                    currentAttrs.putIfAbsent(template.getAttributeName(), "");
+                }
+
+                entity.setDynamicAttributes(currentAttrs);
+            }
+        } else {
+            // Kategorie entfernen (falls gewünscht) – optional, je nach Bedarf
+            entity.setCategory(null);
+        }
+
+        // Storage-Zuweisung aktualisieren (auch null erlaubt)
+        if (updatedItem.getStorageId() != null) {
+            StorageEntity storage = storageRepository.findById(updatedItem.getStorageId())
+                    .orElseThrow(() -> new IllegalArgumentException("Storage not found: " + updatedItem.getStorageId()));
+            entity.setStorage(storage);
+        } else {
+            entity.setStorage(null);
+        }
+
+        ItemEntity saved = itemRepository.save(entity);
+        return itemMapper.toDto(saved);
     }
 
     public Item linkRelatedItems(Integer itemId, List<Integer> relatedItemIds) {
