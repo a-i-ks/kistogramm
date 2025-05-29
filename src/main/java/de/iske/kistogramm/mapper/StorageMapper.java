@@ -12,6 +12,7 @@ public interface StorageMapper {
     @Mapping(target = "parentStorage", ignore = true)
     @Mapping(target = "tags", ignore = true)
     @Mapping(target = "subStorages", ignore = true)
+    @Mapping(target = "items", ignore = true)
     StorageEntity toEntity(Storage dto);
 
     @Mapping(source = "room.id", target = "roomId")

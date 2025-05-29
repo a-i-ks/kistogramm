@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -23,6 +24,9 @@ public class RoomEntity {
 
     private LocalDateTime dateAdded;
     private LocalDateTime dateModified;
+
+    @OneToMany(mappedBy = "room", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<StorageEntity> storages;
 
     public Integer getId() {
         return id;
@@ -72,6 +76,14 @@ public class RoomEntity {
         this.dateModified = dateModified;
     }
 
+    public Set<StorageEntity> getStorages() {
+        return storages;
+    }
+
+    public void setStorages(Set<StorageEntity> storages) {
+        this.storages = storages;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;
@@ -97,6 +109,7 @@ public class RoomEntity {
                 .add("id", id)
                 .add("uuid", uuid)
                 .add("name", name)
+                .add("storages", storages)
                 .add("description", description)
                 .add("dateAdded", dateAdded)
                 .add("dateModified", dateModified)

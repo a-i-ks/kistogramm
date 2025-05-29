@@ -37,7 +37,6 @@ class ItemControllerTest {
     @Autowired
     private ItemRepository itemRepository;
 
-
     private Integer clothingCategoryId;
     private Integer foodCategoryId;
     private Integer electronicCategoryId;

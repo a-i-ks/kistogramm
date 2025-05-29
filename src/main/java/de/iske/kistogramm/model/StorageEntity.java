@@ -38,6 +38,9 @@ public class StorageEntity {
             inverseJoinColumns = @JoinColumn(name = "tag_id"))
     private Set<TagEntity> tags = new HashSet<>();
 
+    @OneToMany(mappedBy = "storage", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<ItemEntity> items = new HashSet<>();
+
     private LocalDateTime dateAdded;
     private LocalDateTime dateModified;
 
@@ -121,6 +124,14 @@ public class StorageEntity {
         this.dateModified = dateModified;
     }
 
+    public Set<ItemEntity> getItems() {
+        return items;
+    }
+
+    public void setItems(Set<ItemEntity> items) {
+        this.items = items;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;
@@ -146,6 +157,7 @@ public class StorageEntity {
                 .add("id", id)
                 .add("uuid", uuid)
                 .add("name", name)
+                .add("numberOfItems", items.size())
                 .add("description", description)
                 .add("room", room)
                 .add("parentStorage", parentStorage)
