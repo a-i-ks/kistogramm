@@ -10,8 +10,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -48,6 +50,17 @@ class ItemControllerTest {
                 .orElseThrow().getId();
         electronicCategoryId = categoryRepository.findByName("Elektronik")
                 .orElseThrow().getId();
+    }
+
+    private Integer createTag(String name) throws Exception {
+        Map<String, String> tag = Map.of("name", name);
+        String response = mockMvc.perform(post("/api/tags")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(tag)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        return objectMapper.readTree(response).get("id").asInt();
     }
 
     @Test
@@ -146,6 +159,165 @@ class ItemControllerTest {
         assertThat(reloaded2.getDateModified()).isBetween(LocalDateTime.now().minusSeconds(5), LocalDateTime.now());
     }
 
+    @Test
+    void shouldUnlinkOneItemAndKeepOthers() throws Exception {
+        // A: Zentrales Item
+        Item itemA = new Item();
+        itemA.setName("Ladegerät");
+        itemA.setCategoryId(electronicCategoryId);
+        itemA.setQuantity(1);
+
+        // B & C: Verbundene Items
+        Item itemB = new Item();
+        itemB.setName("USB-Kabel");
+
+        Item itemC = new Item();
+        itemC.setName("Powerbank");
+
+        itemB.setCategoryId(electronicCategoryId);
+        itemC.setCategoryId(electronicCategoryId);
+        itemB.setQuantity(1);
+        itemC.setQuantity(1);
+
+        Item savedA = objectMapper.readValue(mockMvc.perform(post("/api/items")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(itemA)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Item.class);
+
+        Item savedB = objectMapper.readValue(mockMvc.perform(post("/api/items")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(itemB)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Item.class);
+
+        Item savedC = objectMapper.readValue(mockMvc.perform(post("/api/items")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(itemC)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Item.class);
+
+        // A mit B & C verlinken
+        mockMvc.perform(put("/api/items/" + savedA.getId() + "/related")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(List.of(savedB.getId(), savedC.getId()))))
+                .andExpect(status().isOk());
+
+        // Relation zu B entfernen -> Neue Liste enthält nur C
+        mockMvc.perform(put("/api/items/" + savedA.getId() + "/related")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(List.of(savedC.getId()))))
+                .andExpect(status().isOk());
+
+        // Reload aller Items
+        Item reloadedA = objectMapper.readValue(mockMvc.perform(get("/api/items/" + savedA.getId()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Item.class);
+
+        Item reloadedB = objectMapper.readValue(mockMvc.perform(get("/api/items/" + savedB.getId()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Item.class);
+
+        Item reloadedC = objectMapper.readValue(mockMvc.perform(get("/api/items/" + savedC.getId()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Item.class);
+
+        // Verifikation
+        assertThat(reloadedA.getRelatedItemIds()).containsExactlyInAnyOrder(savedC.getId());
+        assertThat(reloadedB.getRelatedItemIds()).doesNotContain(savedA.getId());
+        assertThat(reloadedC.getRelatedItemIds()).contains(savedA.getId());
+    }
+
+    @Test
+    void shouldAssignSingleTagToItem() throws Exception {
+        // Create item
+        Item item = new Item();
+        item.setName("Buch");
+
+        Item savedItem = objectMapper.readValue(mockMvc.perform(post("/api/items")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(item)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Item.class);
+
+        // Create tag
+        String tagName = "Wissen";
+        Integer tagId = createTag(tagName);
+
+        // Assign tag to item
+        mockMvc.perform(put("/api/items/" + savedItem.getId() + "/tags")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(List.of(tagId))))
+                .andExpect(status().isOk());
+
+        // Verify
+        Item updatedItem = objectMapper.readValue(mockMvc.perform(get("/api/items/" + savedItem.getId()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Item.class);
+
+        assertThat(updatedItem.getTagIds()).containsExactly(tagId);
+    }
+
+    @Test
+    void shouldAssignMultipleTagsToItem() throws Exception {
+        Item item = new Item();
+        item.setName("Laptop");
+
+        Item savedItem = objectMapper.readValue(mockMvc.perform(post("/api/items")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(item)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Item.class);
+
+        Integer tagId1 = createTag("Technik");
+        Integer tagId2 = createTag("Arbeit");
+
+        mockMvc.perform(put("/api/items/" + savedItem.getId() + "/tags")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(List.of(tagId1, tagId2))))
+                .andExpect(status().isOk());
+
+        Item updatedItem = objectMapper.readValue(mockMvc.perform(get("/api/items/" + savedItem.getId()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Item.class);
+
+        assertThat(updatedItem.getTagIds()).containsExactlyInAnyOrder(tagId1, tagId2);
+    }
+
+    @Test
+    void shouldRemoveTagFromItem() throws Exception {
+        Item item = new Item();
+        item.setName("Stuhl");
+
+        Item savedItem = objectMapper.readValue(mockMvc.perform(post("/api/items")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(item)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Item.class);
+
+        Integer tagId1 = createTag("Holz");
+        Integer tagId2 = createTag("Sitzmöbel");
+
+        // Assign both tags
+        mockMvc.perform(put("/api/items/" + savedItem.getId() + "/tags")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(List.of(tagId1, tagId2))))
+                .andExpect(status().isOk());
+
+        // Remove one tag
+        mockMvc.perform(put("/api/items/" + savedItem.getId() + "/tags")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(List.of(tagId2))))
+                .andExpect(status().isOk());
+
+        // Verify only second tag remains
+        Item updatedItem = objectMapper.readValue(mockMvc.perform(get("/api/items/" + savedItem.getId()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Item.class);
+
+        assertThat(updatedItem.getTagIds()).containsExactly(tagId2);
+        assertThat(updatedItem.getTagIds()).doesNotContain(tagId1);
+    }
 
     @Test
     void whenCreatingClothingItemThenDynamicAttributesShouldContainCustomFields() throws Exception {
@@ -231,4 +403,134 @@ class ItemControllerTest {
                         .content(objectMapper.writeValueAsString(item)))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    void shouldUploadImageAndAssignToItem() throws Exception {
+        // Step 1: Create item
+        Item item = new Item();
+        item.setName("Schreibtisch");
+
+        Item savedItem = objectMapper.readValue(mockMvc.perform(post("/api/items")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(item)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Item.class);
+
+        // Step 2: Prepare test image (simulate file upload)
+        byte[] imageData = "fake image content".getBytes(StandardCharsets.UTF_8);
+        MockMultipartFile imageFile = new MockMultipartFile(
+                "files",
+                "test-image.jpg",
+                MediaType.IMAGE_JPEG_VALUE,
+                imageData
+        );
+
+        // Step 3: Perform multipart upload to add image to item
+        mockMvc.perform(multipart("/api/items/" + savedItem.getId() + "/images")
+                        .file(imageFile))
+                .andExpect(status().isOk());
+
+        // Step 4: Reload item and verify image is assigned
+        Item updatedItem = objectMapper.readValue(mockMvc.perform(get("/api/items/" + savedItem.getId()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Item.class);
+
+        assertThat(updatedItem.getImageIds()).isNotNull();
+        assertThat(updatedItem.getImageIds().size()).isEqualTo(1);
+    }
+
+    @Test
+    void shouldUploadMultipleImagesAndAssignToItem() throws Exception {
+        // Step 1: Create a new item
+        Item item = new Item();
+        item.setName("Testgerät");
+
+        String itemJson = objectMapper.writeValueAsString(item);
+        String response = mockMvc.perform(post("/api/items")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(itemJson))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        Item createdItem = objectMapper.readValue(response, Item.class);
+        Integer itemId = createdItem.getId();
+
+        // Step 2: Prepare multiple test image files
+        byte[] imageContent1 = "image1-content".getBytes(StandardCharsets.UTF_8);
+        byte[] imageContent2 = "image2-content".getBytes(StandardCharsets.UTF_8);
+
+        MockMultipartFile image1 = new MockMultipartFile(
+                "files", "image1.jpg", MediaType.IMAGE_JPEG_VALUE, imageContent1);
+
+        MockMultipartFile image2 = new MockMultipartFile(
+                "files", "image2.jpg", MediaType.IMAGE_JPEG_VALUE, imageContent2);
+
+        // Step 3: Perform the upload
+        mockMvc.perform(multipart("/api/items/" + itemId + "/images")
+                        .file(image1)
+                        .file(image2))
+                .andExpect(status().isOk());
+
+        // Step 4: Reload item and verify both images are linked
+        String updatedResponse = mockMvc.perform(get("/api/items/" + itemId))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        Item updatedItem = objectMapper.readValue(updatedResponse, Item.class);
+
+        assertThat(updatedItem.getImageIds()).isNotNull();
+        assertThat(updatedItem.getImageIds().size()).isEqualTo(2);
+    }
+
+    @Test
+    void shouldDeleteOneOfMultipleImagesFromItem() throws Exception {
+        // Step 1: Create a new item
+        Item item = new Item();
+        item.setName("Testobjekt mit Bildern");
+
+        Item createdItem = objectMapper.readValue(mockMvc.perform(post("/api/items")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(item)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Item.class);
+
+        Integer itemId = createdItem.getId();
+
+        // Step 2: Upload two images
+        MockMultipartFile img1 = new MockMultipartFile("files", "img1.jpg", MediaType.IMAGE_JPEG_VALUE, "data1".getBytes());
+        MockMultipartFile img2 = new MockMultipartFile("files", "img2.jpg", MediaType.IMAGE_JPEG_VALUE, "data2".getBytes());
+
+        mockMvc.perform(multipart("/api/items/" + itemId + "/images")
+                        .file(img1)
+                        .file(img2))
+                .andExpect(status().isOk());
+
+        // Step 3: Reload item to get image IDs
+        Item updatedItem = objectMapper.readValue(mockMvc.perform(get("/api/items/" + itemId))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Item.class);
+
+        List<Integer> imageIds = updatedItem.getImageIds().stream().toList();
+        assertThat(imageIds).hasSize(2);
+
+        Integer imageToDelete = imageIds.get(0);
+        Integer imageToKeep = imageIds.get(1);
+
+        // Step 4: Delete one image
+        mockMvc.perform(delete("/api/items/" + itemId + "/images/" + imageToDelete))
+                .andExpect(status().isOk());
+
+        // Step 5: Reload item and verify image count
+        Item afterDeletion = objectMapper.readValue(mockMvc.perform(get("/api/items/" + itemId))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Item.class);
+
+        assertThat(afterDeletion.getImageIds()).containsExactly(imageToKeep);
+
+        // Step 6: Verify the image was really deleted (404 or empty)
+        mockMvc.perform(get("/api/images/" + imageToDelete))
+                .andExpect(status().isNotFound());
+    }
+
+
 }

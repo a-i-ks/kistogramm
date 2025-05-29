@@ -42,12 +42,7 @@ public class ItemEntity {
     )
     private Set<TagEntity> tags = new HashSet<>();
 
-    @OneToMany
-    @JoinTable(
-            name = "item_images",
-            joinColumns = @JoinColumn(name = "item_id"),
-            inverseJoinColumns = @JoinColumn(name = "image_id")
-    )
+    @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<ImageEntity> images = new HashSet<>();
 
     @ManyToMany

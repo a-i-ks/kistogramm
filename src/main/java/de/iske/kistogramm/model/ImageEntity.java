@@ -19,6 +19,18 @@ public class ImageEntity {
     private LocalDateTime dateAdded;
     private LocalDateTime dateModified;
 
+    @ManyToOne
+    @JoinColumn(name = "item_id")
+    private ItemEntity item;
+
+    @ManyToOne
+    @JoinColumn(name = "storage_id")
+    private StorageEntity storage;
+
+    @ManyToOne
+    @JoinColumn(name = "room_id")
+    private RoomEntity room;
+
     public Integer getId() {
         return id;
     }
@@ -51,6 +63,30 @@ public class ImageEntity {
         this.dateModified = dateModified;
     }
 
+    public ItemEntity getItem() {
+        return item;
+    }
+
+    public void setItem(ItemEntity item) {
+        this.item = item;
+    }
+
+    public StorageEntity getStorage() {
+        return storage;
+    }
+
+    public void setStorage(StorageEntity storage) {
+        this.storage = storage;
+    }
+
+    public RoomEntity getRoom() {
+        return room;
+    }
+
+    public void setRoom(RoomEntity room) {
+        this.room = room;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;
@@ -63,10 +99,23 @@ public class ImageEntity {
         return 42;
     }
 
+    private String resolveOwner() {
+        if (item != null) {
+            return "Item[id=" + item.getId() + "]";
+        } else if (storage != null) {
+            return "Storage[id=" + storage.getId() + "]";
+        } else if (room != null) {
+            return "Room[id=" + room.getId() + "]";
+        } else {
+            return "Unassigned";
+        }
+    }
+
     @Override
     public String toString() {
         return com.google.common.base.MoreObjects.toStringHelper(this)
                 .add("id", id)
+                .add("belongsTo", resolveOwner())
                 .add("data.length", data != null ? data.length : 0)
                 .add("dateAdded", dateAdded)
                 .add("dateModified", dateModified)

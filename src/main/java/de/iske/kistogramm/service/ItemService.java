@@ -5,7 +5,9 @@ import de.iske.kistogramm.mapper.ItemMapper;
 import de.iske.kistogramm.model.*;
 import de.iske.kistogramm.repository.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -119,7 +121,7 @@ public class ItemService {
         ItemEntity entity = itemRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Item not found: " + id));
 
-        // Update der Felder
+        // update attributes
         entity.setName(updatedItem.getName());
         entity.setDescription(updatedItem.getDescription());
         entity.setPurchaseDate(updatedItem.getPurchaseDate());
@@ -152,19 +154,95 @@ public class ItemService {
         ItemEntity item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new IllegalArgumentException("Item not found: " + itemId));
 
-        List<ItemEntity> relatedItems = itemRepository.findAllById(relatedItemIds);
+        List<ItemEntity> desiredRelatedItems = itemRepository.findAllById(relatedItemIds);
+        Set<ItemEntity> currentRelatedItems = new HashSet<>(item.getRelatedItems());
 
-        // Verknüpfung in beide Richtungen, falls bidirektional nötig
-        for (ItemEntity related : relatedItems) {
-            item.getRelatedItems().add(related);
-            related.getRelatedItems().add(item);
+        // Remove old links not included in the new list
+        for (ItemEntity oldRelated : currentRelatedItems) {
+            if (desiredRelatedItems.stream().noneMatch(r -> r.getId().equals(oldRelated.getId()))) {
+                oldRelated.getRelatedItems().remove(item);
+                item.getRelatedItems().remove(oldRelated);
+                itemRepository.save(oldRelated);
+            }
+        }
+
+        // Add new links (if not already linked)
+        for (ItemEntity newRelated : desiredRelatedItems) {
+            if (!item.getRelatedItems().contains(newRelated)) {
+                item.getRelatedItems().add(newRelated);
+                newRelated.getRelatedItems().add(item);
+                itemRepository.save(newRelated);
+            }
         }
 
         item.setDateModified(LocalDateTime.now());
-
-        itemRepository.saveAll(relatedItems);
         ItemEntity saved = itemRepository.save(item);
 
         return itemMapper.toDto(saved);
+    }
+
+    public Item updateTags(Integer itemId, List<Integer> tagIds) {
+        ItemEntity item = itemRepository.findById(itemId)
+                .orElseThrow(() -> new IllegalArgumentException("Item not found: " + itemId));
+
+        List<TagEntity> newTags = tagRepository.findAllById(tagIds);
+
+        // Remove tags not in the new list
+        Set<TagEntity> currentTags = new HashSet<>(item.getTags());
+        for (TagEntity oldTag : currentTags) {
+            if (newTags.stream().noneMatch(t -> t.getId().equals(oldTag.getId()))) {
+                item.getTags().remove(oldTag);
+            }
+        }
+
+        // Add new tags not already assigned
+        for (TagEntity newTag : newTags) {
+            item.getTags().add(newTag);
+        }
+
+        item.setDateModified(LocalDateTime.now());
+        return itemMapper.toDto(itemRepository.save(item));
+    }
+
+    public Item uploadImages(Integer itemId, List<MultipartFile> files) {
+        ItemEntity item = itemRepository.findById(itemId)
+                .orElseThrow(() -> new IllegalArgumentException("Item not found: " + itemId));
+
+        for (MultipartFile file : files) {
+            try {
+                ImageEntity image = new ImageEntity();
+                image.setData(file.getBytes());
+                image.setDateAdded(LocalDateTime.now());
+                image.setDateModified(LocalDateTime.now());
+                image.setItem(item);  // 👈 eindeutig: Bild gehört dem Item
+                imageRepository.save(image);
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to read uploaded file", e);
+            }
+        }
+
+        item.setDateModified(LocalDateTime.now());
+        return itemMapper.toDto(itemRepository.save(item));
+    }
+
+    public void deleteImageFromItem(Integer itemId, Integer imageId) {
+        ItemEntity item = itemRepository.findById(itemId)
+                .orElseThrow(() -> new IllegalArgumentException("Item not found: " + itemId));
+
+        ImageEntity imageToRemove = imageRepository.findById(imageId)
+                .orElseThrow(() -> new IllegalArgumentException("Image not found: " + imageId));
+
+        // Prüfen, ob das Bild zu diesem Item gehört
+        if (!item.getImages().contains(imageToRemove)) {
+            throw new IllegalArgumentException("Image does not belong to this item");
+        }
+
+        // Entfernen aus der Beziehung
+        item.getImages().remove(imageToRemove);
+        item.setDateModified(LocalDateTime.now());
+        itemRepository.save(item);
+
+        // Bild selbst löschen
+        imageRepository.delete(imageToRemove);
     }
 }

@@ -5,6 +5,7 @@ import de.iske.kistogramm.service.ItemService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -54,9 +55,32 @@ public class ItemController {
     }
 
     @PutMapping("/{id}/related")
+    @Transactional
     public ResponseEntity<Item> linkRelatedItems(@PathVariable Integer id,
                                                  @RequestBody List<Integer> relatedItemIds) {
         Item updated = itemService.linkRelatedItems(id, relatedItemIds);
         return ResponseEntity.ok(updated);
     }
+
+    @PutMapping("/{id}/tags")
+    @Transactional
+    public ResponseEntity<Item> updateTags(@PathVariable Integer id, @RequestBody List<Integer> tagIds) {
+        Item updated = itemService.updateTags(id, tagIds);
+        return ResponseEntity.ok(updated);
+    }
+
+    @PostMapping("/{id}/images")
+    public ResponseEntity<Item> uploadImages(@PathVariable Integer id,
+                                             @RequestParam("files") List<MultipartFile> files) {
+        Item updated = itemService.uploadImages(id, files);
+        return ResponseEntity.ok(updated);
+    }
+
+    @DeleteMapping("/{itemId}/images/{imageId}")
+    public ResponseEntity<Void> deleteItemImage(@PathVariable Integer itemId, @PathVariable Integer imageId) {
+        itemService.deleteImageFromItem(itemId, imageId);
+        return ResponseEntity.ok().build();
+    }
+
+
 }
