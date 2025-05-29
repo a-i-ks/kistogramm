@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.UUID;
 
 @Entity
 @Table(name = "images")
@@ -12,6 +13,9 @@ public class ImageEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
+
+    @Column(name = "uuid", nullable = false, unique = true)
+    private UUID uuid;
 
     @Column(name = "data", nullable = false, columnDefinition = "BYTEA")
     private byte[] data;
@@ -37,6 +41,14 @@ public class ImageEntity {
 
     public void setId(Integer id) {
         this.id = id;
+    }
+
+    public UUID getUuid() {
+        return uuid;
+    }
+
+    public void setUuid(UUID uuid) {
+        this.uuid = uuid;
     }
 
     public byte[] getData() {
@@ -91,12 +103,19 @@ public class ImageEntity {
     public boolean equals(Object obj) {
         if (this == obj) return true;
         if (!(obj instanceof ImageEntity that)) return false;
-        return getId() != null && Objects.equals(getId(), that.getId());
+        return getUuid() != null && Objects.equals(getUuid(), that.getUuid());
     }
 
     @Override
     public int hashCode() {
         return 42;
+    }
+
+    @PrePersist
+    public void ensureUuid() {
+        if (uuid == null) {
+            uuid = UUID.randomUUID(); // Ensure UUID is generated before persisting
+        }
     }
 
     private String resolveOwner() {
@@ -115,6 +134,7 @@ public class ImageEntity {
     public String toString() {
         return com.google.common.base.MoreObjects.toStringHelper(this)
                 .add("id", id)
+                .add("uuid", uuid)
                 .add("belongsTo", resolveOwner())
                 .add("data.length", data != null ? data.length : 0)
                 .add("dateAdded", dateAdded)

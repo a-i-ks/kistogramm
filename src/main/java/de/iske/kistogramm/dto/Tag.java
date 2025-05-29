@@ -4,10 +4,12 @@ import com.google.common.base.MoreObjects;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.UUID;
 
 public class Tag {
 
     private Integer id;
+    private UUID uuid;
     private String name;
     private LocalDateTime dateAdded;
     private LocalDateTime dateModified;
@@ -18,6 +20,14 @@ public class Tag {
 
     public void setId(Integer id) {
         this.id = id;
+    }
+
+    public UUID getUuid() {
+        return uuid;
+    }
+
+    public void setUuid(UUID uuid) {
+        this.uuid = uuid;
     }
 
     public String getName() {
@@ -48,7 +58,7 @@ public class Tag {
     public boolean equals(final Object obj) {
         if (this == obj) return true;
         if (!(obj instanceof Tag that)) return false;
-        if (getId() != null && Objects.equals(getId(), that.getId())) return true;
+        if (getUuid() != null && Objects.equals(getUuid(), that.getUuid())) return true;
         return Objects.equals(getName(), that.getName()) &&
                 Objects.equals(getDateAdded(), that.getDateAdded()) &&
                 Objects.equals(getDateModified(), that.getDateModified());
@@ -56,13 +66,14 @@ public class Tag {
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, name, dateAdded, dateModified);
+        return Objects.hash(id, uuid, name, dateAdded, dateModified);
     }
 
     @Override
     public String toString() {
         return MoreObjects.toStringHelper(this)
                 .add("id", id)
+                .add("uuid", uuid)
                 .add("name", name)
                 .add("dateAdded", dateAdded)
                 .add("dateModified", dateModified)

@@ -6,6 +6,7 @@
 -- Categories
 CREATE TABLE IF NOT EXISTS categories (
     id SERIAL PRIMARY KEY,
+    uuid UUID NOT NULL UNIQUE,
     name VARCHAR(255) NOT NULL,
     date_added TIMESTAMP,
     date_modified TIMESTAMP
@@ -14,6 +15,7 @@ CREATE TABLE IF NOT EXISTS categories (
 -- Rooms
 CREATE TABLE IF NOT EXISTS rooms (
     id SERIAL PRIMARY KEY,
+    uuid UUID NOT NULL UNIQUE,
     name VARCHAR(255) NOT NULL,
     description TEXT,
     date_added TIMESTAMP,
@@ -23,6 +25,7 @@ CREATE TABLE IF NOT EXISTS rooms (
 -- Tags
 CREATE TABLE IF NOT EXISTS tags (
     id SERIAL PRIMARY KEY,
+    uuid UUID NOT NULL UNIQUE,
     name VARCHAR(255) NOT NULL,
     date_added TIMESTAMP,
     date_modified TIMESTAMP
@@ -31,6 +34,7 @@ CREATE TABLE IF NOT EXISTS tags (
 -- Storages
 CREATE TABLE IF NOT EXISTS storages (
     id SERIAL PRIMARY KEY,
+    uuid UUID NOT NULL UNIQUE,
     name VARCHAR(255) NOT NULL,
     description TEXT,
     room_id INT,
@@ -44,6 +48,7 @@ CREATE TABLE IF NOT EXISTS storages (
 -- Items
 CREATE TABLE IF NOT EXISTS items (
     id SERIAL PRIMARY KEY,
+    uuid UUID NOT NULL UNIQUE,
     name VARCHAR(255) NOT NULL,
     description TEXT,
     purchase_date DATE,
@@ -60,6 +65,7 @@ CREATE TABLE IF NOT EXISTS items (
 -- Images
 CREATE TABLE IF NOT EXISTS images (
     id SERIAL PRIMARY KEY,
+    uuid UUID NOT NULL UNIQUE,
     data BYTEA NOT NULL,
     date_added TIMESTAMP,
     date_modified TIMESTAMP,

@@ -4,10 +4,12 @@ import com.google.common.base.MoreObjects;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.UUID;
 
 public class Room {
 
     private Integer id;
+    private UUID uuid;
     private String name;
     private String description;
     private LocalDateTime dateAdded;
@@ -19,6 +21,14 @@ public class Room {
 
     public void setId(Integer id) {
         this.id = id;
+    }
+
+    public UUID getUuid() {
+        return uuid;
+    }
+
+    public void setUuid(UUID uuid) {
+        this.uuid = uuid;
     }
 
     public String getName() {
@@ -57,7 +67,7 @@ public class Room {
     public boolean equals(final Object obj) {
         if (this == obj) return true;
         if (!(obj instanceof Room that)) return false;
-        if (getId() != null && Objects.equals(getId(), that.getId())) return true;
+        if (getUuid() != null && Objects.equals(getUuid(), that.getUuid())) return true;
         return Objects.equals(getName(), that.getName())
                 && Objects.equals(getDescription(), that.getDescription())
                 && Objects.equals(getDateAdded(), that.getDateAdded())
@@ -66,13 +76,14 @@ public class Room {
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, name, description, dateAdded, dateModified);
+        return Objects.hash(id, uuid, name, description, dateAdded, dateModified);
     }
 
     @Override
     public String toString() {
         return MoreObjects.toStringHelper(this)
                 .add("id", id)
+                .add("uuid", uuid)
                 .add("name", name)
                 .add("description", description)
                 .add("dateAdded", dateAdded)

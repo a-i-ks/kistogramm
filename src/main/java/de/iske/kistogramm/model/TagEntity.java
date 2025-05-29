@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.UUID;
 
 @Entity
 @Table(name = "tags")
@@ -13,6 +14,9 @@ public class TagEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
+
+    @Column(name = "uuid", nullable = false, unique = true)
+    private UUID uuid;
 
     private String name;
     private LocalDateTime dateAdded;
@@ -24,6 +28,14 @@ public class TagEntity {
 
     public void setId(Integer id) {
         this.id = id;
+    }
+
+    public UUID getUuid() {
+        return uuid;
+    }
+
+    public void setUuid(UUID uuid) {
+        this.uuid = uuid;
     }
 
     public String getName() {
@@ -54,7 +66,7 @@ public class TagEntity {
     public boolean equals(Object obj) {
         if (this == obj) return true;
         if (!(obj instanceof TagEntity that)) return false;
-        return getId() != null && Objects.equals(getId(), that.getId());
+        return getUuid() != null && Objects.equals(getUuid(), that.getUuid());
     }
 
     @Override
@@ -62,10 +74,18 @@ public class TagEntity {
         return 42;
     }
 
+    @PrePersist
+    public void ensureUuid() {
+        if (uuid == null) {
+            uuid = UUID.randomUUID(); // Ensure UUID is generated before persisting
+        }
+    }
+
     @Override
     public String toString() {
         return MoreObjects.toStringHelper(this)
                 .add("id", id)
+                .add("uuid", uuid)
                 .add("name", name)
                 .add("dateAdded", dateAdded)
                 .add("dateModified", dateModified)

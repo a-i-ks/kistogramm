@@ -7,6 +7,7 @@ import java.util.*;
 public class Item {
 
     private Integer id;
+    private UUID uuid;
     private String name;
     private String description;
     private LocalDate purchaseDate;
@@ -29,6 +30,14 @@ public class Item {
 
     public void setId(Integer id) {
         this.id = id;
+    }
+
+    public UUID getUuid() {
+        return uuid;
+    }
+
+    public void setUuid(UUID uuid) {
+        this.uuid = uuid;
     }
 
     public String getName() {
@@ -139,7 +148,7 @@ public class Item {
     public boolean equals(Object obj) {
         if (this == obj) return true;
         if (!(obj instanceof Item that)) return false;
-        if (getId() != null && Objects.equals(getId(), that.getId())) return true;
+        if (getUuid() != null && Objects.equals(getUuid(), that.getUuid())) return true;
         return Objects.equals(getName(), that.getName()) &&
                 Objects.equals(getDescription(), that.getDescription()) &&
                 Objects.equals(getPurchaseDate(), that.getPurchaseDate()) &&
@@ -149,13 +158,14 @@ public class Item {
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, name, description, purchaseDate, purchasePrice, quantity);
+        return Objects.hash(id, uuid, name, description, purchaseDate, purchasePrice, quantity);
     }
 
     @Override
     public String toString() {
         return com.google.common.base.MoreObjects.toStringHelper(this)
                 .add("id", id)
+                .add("uuid", uuid)
                 .add("name", name)
                 .add("description", description)
                 .add("purchaseDate", purchaseDate)

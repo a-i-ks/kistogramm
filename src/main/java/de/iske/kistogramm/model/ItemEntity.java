@@ -16,6 +16,9 @@ public class ItemEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
+    @Column(name = "uuid", nullable = false, unique = true)
+    private UUID uuid;
+
     private String name;
     private String description;
 
@@ -66,6 +69,14 @@ public class ItemEntity {
 
     public void setId(Integer id) {
         this.id = id;
+    }
+
+    public UUID getUuid() {
+        return uuid;
+    }
+
+    public void setUuid(UUID uuid) {
+        this.uuid = uuid;
     }
 
     public String getName() {
@@ -181,12 +192,19 @@ public class ItemEntity {
         if (!(obj instanceof ItemEntity that)) {
             return false;
         }
-        return getId() != null && Objects.equals(getId(), that.getId());
+        return getUuid() != null && Objects.equals(getUuid(), that.getUuid());
     }
 
     @Override
     public int hashCode() {
         return 42; // id is DB-generated
+    }
+
+    @PrePersist
+    public void ensureUuid() {
+        if (uuid == null) {
+            uuid = UUID.randomUUID(); // Ensure UUID is generated before persisting
+        }
     }
 
     // toString
@@ -198,6 +216,7 @@ public class ItemEntity {
     protected ToStringHelper toStringHelper() {
         return MoreObjects.toStringHelper(this)
                 .add("id", id)
+                .add("uuid", uuid)
                 .add("name", name)
                 .add("description", description)
                 .add("purchaseDate", purchaseDate)

@@ -1,12 +1,16 @@
 package de.iske.kistogramm.dto;
 
+import com.google.common.base.MoreObjects;
+
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.UUID;
 
 public class Image {
 
     private Integer id;
+    private UUID uuid;
     private byte[] data;
     private LocalDateTime dateAdded;
     private LocalDateTime dateModified;
@@ -17,6 +21,14 @@ public class Image {
 
     public void setId(Integer id) {
         this.id = id;
+    }
+
+    public UUID getUuid() {
+        return uuid;
+    }
+
+    public void setUuid(UUID uuid) {
+        this.uuid = uuid;
     }
 
     public byte[] getData() {
@@ -47,7 +59,7 @@ public class Image {
     public boolean equals(final Object obj) {
         if (this == obj) return true;
         if (!(obj instanceof Image that)) return false;
-        if (getId() != null && Objects.equals(getId(), that.getId())) return true;
+        if (getUuid() != null && Objects.equals(getUuid(), that.getUuid())) return true;
         return Arrays.equals(getData(), that.getData()) &&
                 Objects.equals(getDateAdded(), that.getDateAdded()) &&
                 Objects.equals(getDateModified(), that.getDateModified());
@@ -62,8 +74,9 @@ public class Image {
 
     @Override
     public String toString() {
-        return com.google.common.base.MoreObjects.toStringHelper(this)
+        return MoreObjects.toStringHelper(this)
                 .add("id", id)
+                .add("uuid", uuid)
                 .add("data.length", data != null ? data.length : 0)
                 .add("dateAdded", dateAdded)
                 .add("dateModified", dateModified)

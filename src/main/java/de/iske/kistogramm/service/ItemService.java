@@ -214,7 +214,7 @@ public class ItemService {
                 image.setData(file.getBytes());
                 image.setDateAdded(LocalDateTime.now());
                 image.setDateModified(LocalDateTime.now());
-                image.setItem(item);  // 👈 eindeutig: Bild gehört dem Item
+                image.setItem(item);
                 imageRepository.save(image);
             } catch (IOException e) {
                 throw new RuntimeException("Failed to read uploaded file", e);

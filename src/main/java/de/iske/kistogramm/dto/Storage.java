@@ -5,10 +5,12 @@ import com.google.common.base.MoreObjects;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 public class Storage {
 
     private Integer id;
+    private UUID uuid;
     private String name;
     private String description;
     private Integer roomId;
@@ -23,6 +25,14 @@ public class Storage {
 
     public void setId(Integer id) {
         this.id = id;
+    }
+
+    public UUID getUuid() {
+        return uuid;
+    }
+
+    public void setUuid(UUID uuid) {
+        this.uuid = uuid;
     }
 
     public String getName() {
@@ -85,7 +95,7 @@ public class Storage {
     public boolean equals(final Object obj) {
         if (this == obj) return true;
         if (!(obj instanceof Storage that)) return false;
-        if (getId() != null && Objects.equals(getId(), that.getId())) return true;
+        if (getUuid() != null && Objects.equals(getUuid(), that.getUuid())) return true;
         return Objects.equals(getName(), that.getName())
                 && Objects.equals(getDescription(), that.getDescription())
                 && Objects.equals(getRoomId(), that.getRoomId())
@@ -97,13 +107,14 @@ public class Storage {
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, name, description, roomId, parentStorageId, tagIds, dateAdded, dateModified);
+        return Objects.hash(id, uuid, name, description, roomId, parentStorageId, tagIds, dateAdded, dateModified);
     }
 
     @Override
     public String toString() {
         return MoreObjects.toStringHelper(this)
                 .add("id", id)
+                .add("uuid", uuid)
                 .add("name", name)
                 .add("description", description)
                 .add("roomId", roomId)
