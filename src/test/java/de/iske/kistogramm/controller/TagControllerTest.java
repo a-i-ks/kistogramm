@@ -198,7 +198,7 @@ public class TagControllerTest {
 
         // Step 3: Tags den Items zuweisen
         assignTags(item1.getId(), List.of(tag1.getId(), tag2.getId()));
-        assignTags(item2.getId(), List.of(tag1.getId(), tag3.getId()));
+        assignTags(item2.getId(), List.of(tag2.getId(), tag3.getId()));
         assignTags(item3.getId(), List.of(tag1.getId()));
 
         // Step 4: Abfrage aller Items mit Tag1
@@ -210,9 +210,9 @@ public class TagControllerTest {
 
         List<Item> result = objectMapper.readValue(json, new TypeReference<>() {
         });
-        assertThat(result).hasSize(3);
+        assertThat(result).hasSize(2);
         assertThat(result.stream().map(Item::getName).toList())
-                .containsExactlyInAnyOrder("Item 1", "Item 2", "Item 3");
+                .containsExactlyInAnyOrder("Item 1", "Item 3");
     }
 
     private Tag createTag(String name) throws Exception {
