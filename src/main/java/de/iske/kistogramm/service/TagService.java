@@ -1,5 +1,6 @@
 package de.iske.kistogramm.service;
 
+import de.iske.kistogramm.dto.Item;
 import de.iske.kistogramm.dto.Tag;
 import de.iske.kistogramm.mapper.TagMapper;
 import de.iske.kistogramm.model.TagEntity;
@@ -14,10 +15,15 @@ import java.util.Optional;
 public class TagService {
 
     private final TagRepository tagRepository;
+    private final ItemService itemService;
     private final TagMapper tagMapper;
 
-    public TagService(TagRepository tagRepository, TagMapper tagMapper) {
+    public TagService(
+            TagRepository tagRepository,
+            TagMapper tagMapper,
+            ItemService itemService) {
         this.tagRepository = tagRepository;
+        this.itemService = itemService;
         this.tagMapper = tagMapper;
     }
 
@@ -39,7 +45,22 @@ public class TagService {
         return tagMapper.toDto(tagRepository.save(entity));
     }
 
+    public Tag updateTag(Tag tag) {
+        TagEntity entity = tagRepository.findById(tag.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Tag not found: " + tag.getId()));
+
+        entity.setName(tag.getName());
+        entity.setDateModified(LocalDateTime.now());
+
+        TagEntity saved = tagRepository.save(entity);
+        return tagMapper.toDto(saved);
+    }
+
     public void deleteTag(Integer id) {
         tagRepository.deleteById(id);
+    }
+
+    public List<Item> getItemsByTagId(Integer tagId) {
+        return itemService.getItemsByTagId(tagId);
     }
 }

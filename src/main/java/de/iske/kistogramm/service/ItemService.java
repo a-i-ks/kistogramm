@@ -168,6 +168,14 @@ public class ItemService {
             entity.setStorage(null);
         }
 
+        // Tags aktualisieren
+        if (updatedItem.getTagIds() != null) {
+            Set<TagEntity> newTags = new HashSet<>(tagRepository.findAllById(updatedItem.getTagIds()));
+            entity.setTags(newTags);
+        } else {
+            entity.setTags(new HashSet<>());
+        }
+
         ItemEntity saved = itemRepository.save(entity);
         return itemMapper.toDto(saved);
     }
@@ -266,5 +274,11 @@ public class ItemService {
 
         // Bild selbst löschen
         imageRepository.delete(imageToRemove);
+    }
+
+    public List<Item> getItemsByTagId(Integer tagId) {
+        return itemRepository.findByTagsId(tagId).stream()
+                .map(itemMapper::toDto)
+                .toList();
     }
 }

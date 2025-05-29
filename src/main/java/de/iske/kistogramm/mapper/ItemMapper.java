@@ -2,6 +2,7 @@ package de.iske.kistogramm.mapper;
 
 import de.iske.kistogramm.dto.Item;
 import de.iske.kistogramm.model.ItemEntity;
+import de.iske.kistogramm.model.TagEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
@@ -18,9 +19,15 @@ public interface ItemMapper {
         return items.stream().map(ItemEntity::getId).collect(Collectors.toSet());
     }
 
+    @Named("mapTagsToIds")
+    static Set<Integer> mapTagsToIds(Set<TagEntity> items) {
+        if (items == null) return Set.of();
+        return items.stream().map(TagEntity::getId).collect(Collectors.toSet());
+    }
+
     @Mapping(source = "category.id", target = "categoryId")
     @Mapping(source = "storage.id", target = "storageId")
-    @Mapping(target = "tagIds", ignore = true)
+    @Mapping(target = "tagIds", source = "tags", qualifiedByName = "mapTagsToIds")
     @Mapping(target = "relatedItemIds", source = "relatedItems", qualifiedByName = "mapRelatedEntitiesToIds")
     @Mapping(target = "imageIds", ignore = true)
     Item toDto(ItemEntity entity);
