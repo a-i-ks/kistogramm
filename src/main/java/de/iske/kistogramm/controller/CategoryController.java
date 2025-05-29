@@ -3,7 +3,6 @@ package de.iske.kistogramm.controller;
 import de.iske.kistogramm.dto.Category;
 import de.iske.kistogramm.dto.CategoryAttributeTemplate;
 import de.iske.kistogramm.dto.Item;
-import de.iske.kistogramm.service.CategoryAttributeTemplateService;
 import de.iske.kistogramm.service.CategoryService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,31 +15,27 @@ import java.util.List;
 public class CategoryController {
 
     private final CategoryService categoryService;
-    private final CategoryAttributeTemplateService attributeTemplateService;
 
-
-    public CategoryController(CategoryService categoryService,
-                              CategoryAttributeTemplateService categoryAttributeTemplateService) {
+    public CategoryController(CategoryService categoryService) {
         this.categoryService = categoryService;
-        this.attributeTemplateService = categoryAttributeTemplateService;
     }
 
     @GetMapping("/template/category/{categoryId}")
     @Transactional(readOnly = true)
     public ResponseEntity<List<CategoryAttributeTemplate>> getTemplateByCategory(@PathVariable Integer categoryId) {
-        return ResponseEntity.ok(attributeTemplateService.getTemplatesForCategory(categoryId));
+        return ResponseEntity.ok(categoryService.getTemplatesForCategory(categoryId));
     }
 
     @PostMapping("/template")
     @Transactional
     public ResponseEntity<CategoryAttributeTemplate> createTemplate(@RequestBody CategoryAttributeTemplate template) {
-        return ResponseEntity.ok(attributeTemplateService.createTemplate(template));
+        return ResponseEntity.ok(categoryService.createTemplate(template));
     }
 
     @DeleteMapping("/template/{id}")
     @Transactional
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
-        attributeTemplateService.deleteTemplate(id);
+        categoryService.deleteTemplate(id);
         return ResponseEntity.noContent().build();
     }
 
