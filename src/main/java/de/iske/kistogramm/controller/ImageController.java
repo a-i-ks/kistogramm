@@ -3,6 +3,7 @@ package de.iske.kistogramm.controller;
 import de.iske.kistogramm.dto.Image;
 import de.iske.kistogramm.service.ImageService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -21,14 +22,24 @@ public class ImageController {
     }
 
     @GetMapping
+    @Transactional(readOnly = true)
     public List<Image> getAllImages() {
         return imageService.getAllImages();
     }
 
     @GetMapping("/{id}")
+    @Transactional(readOnly = true)
     public ResponseEntity<Image> getImageById(@PathVariable Integer id) {
         return imageService.getImageById(id)
                 .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/{id}/data")
+    @Transactional(readOnly = true)
+    public ResponseEntity<byte[]> getImageData(@PathVariable Integer id) {
+        return imageService.getImageData(id)
+                .map(data -> ResponseEntity.ok().body(data))
                 .orElse(ResponseEntity.notFound().build());
     }
 

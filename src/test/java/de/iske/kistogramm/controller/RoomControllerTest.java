@@ -17,7 +17,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(properties = "spring.profiles.active=test")
@@ -331,5 +333,20 @@ public class RoomControllerTest {
         assertThat(itemsInRoom1).hasSize(4);
         assertThat(itemsInRoom1).extracting(Item::getName)
                 .containsExactlyInAnyOrder("Item 1", "Item 2", "Item 3", "Item 4");
+    }
+
+    @Test
+    void shouldNotCreateStorageWithoutRoom() throws Exception {
+        // Erstelle ein Storage-Objekt ohne roomId
+        Storage storage = new Storage();
+        storage.setName("Werkzeugkiste");
+        storage.setDescription("Enthält Schraubendreher und Hammer");
+
+        // Versuche, den Storage ohne roomId anzulegen
+        mockMvc.perform(post("/api/storages")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(storage)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message", containsString("roomId")));
     }
 }

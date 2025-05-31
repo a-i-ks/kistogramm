@@ -41,6 +41,9 @@ public class StorageEntity {
     @OneToMany(mappedBy = "storage", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<ItemEntity> items = new HashSet<>();
 
+    @OneToMany(mappedBy = "storage", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<ImageEntity> images = new HashSet<>();
+
     private LocalDateTime dateAdded;
     private LocalDateTime dateModified;
 
@@ -132,6 +135,14 @@ public class StorageEntity {
         this.items = items;
     }
 
+    public Set<ImageEntity> getImages() {
+        return images;
+    }
+
+    public void setImages(Set<ImageEntity> images) {
+        this.images = images;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;
@@ -160,9 +171,51 @@ public class StorageEntity {
                 .add("numberOfItems", items.size())
                 .add("description", description)
                 .add("room", room)
-                .add("parentStorage", parentStorage)
+                .add("parentStorageId", parentStorage != null ? parentStorage.getId() : null)
+                .add("subStoragesIds", getIdsOfSubStorages())
+                .add("tags", getTagsAsString())
+                .add("imagesIds", getImagesIds())
                 .add("dateAdded", dateAdded)
                 .add("dateModified", dateModified)
                 .toString();
+    }
+
+    private String getImagesIds() {
+        if (images == null || images.isEmpty()) {
+            return "[]";
+        }
+        StringBuilder sb = new StringBuilder("[");
+        for (ImageEntity image : images) {
+            sb.append(image.getId()).append(", ");
+        }
+        sb.setLength(sb.length() - 2); // Remove last comma and space
+        sb.append("]");
+        return sb.toString();
+    }
+
+    private String getTagsAsString() {
+        if (tags == null || tags.isEmpty()) {
+            return "[]";
+        }
+        StringBuilder sb = new StringBuilder("[");
+        for (TagEntity tag : tags) {
+            sb.append(tag.getId()).append(", ");
+        }
+        sb.setLength(sb.length() - 2); // Remove last comma and space
+        sb.append("]");
+        return sb.toString();
+    }
+
+    private String getIdsOfSubStorages() {
+        if (subStorages == null || subStorages.isEmpty()) {
+            return "[]";
+        }
+        StringBuilder sb = new StringBuilder("[");
+        for (StorageEntity subStorage : subStorages) {
+            sb.append(subStorage.getId()).append(", ");
+        }
+        sb.setLength(sb.length() - 2); // Remove last comma and space
+        sb.append("]");
+        return sb.toString();
     }
 }

@@ -15,6 +15,7 @@ public class Storage {
     private String description;
     private Integer roomId;
     private Integer parentStorageId;
+    private List<Integer> imageIds;
     private List<Integer> tagIds;
     private LocalDateTime dateAdded;
     private LocalDateTime dateModified;
@@ -49,6 +50,14 @@ public class Storage {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public List<Integer> getImageIds() {
+        return imageIds;
+    }
+
+    public void setImageIds(List<Integer> imageIds) {
+        this.imageIds = imageIds;
     }
 
     public Integer getRoomId() {
@@ -99,6 +108,7 @@ public class Storage {
         return Objects.equals(getName(), that.getName())
                 && Objects.equals(getDescription(), that.getDescription())
                 && Objects.equals(getRoomId(), that.getRoomId())
+                && Objects.equals(getImageIds(), that.getImageIds())
                 && Objects.equals(getParentStorageId(), that.getParentStorageId())
                 && Objects.equals(getTagIds(), that.getTagIds())
                 && Objects.equals(getDateAdded(), that.getDateAdded())
@@ -117,6 +127,7 @@ public class Storage {
                 .add("uuid", uuid)
                 .add("name", name)
                 .add("description", description)
+                .add("imageIds", imageIds)
                 .add("roomId", roomId)
                 .add("parentStorageId", parentStorageId)
                 .add("tagIds", tagIds)

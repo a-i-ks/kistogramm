@@ -1,6 +1,7 @@
 package de.iske.kistogramm.service;
 
 import de.iske.kistogramm.dto.Item;
+import de.iske.kistogramm.mapper.ImageMapper;
 import de.iske.kistogramm.mapper.ItemMapper;
 import de.iske.kistogramm.model.*;
 import de.iske.kistogramm.repository.*;
@@ -22,6 +23,7 @@ public class ItemService {
     private final ImageRepository imageRepository;
     private final CategoryAttributeTemplateRepository templateRepository;
     private final ItemMapper itemMapper;
+    private final ImageMapper imageMapper;
 
     public ItemService(ItemRepository itemRepository,
                        CategoryRepository categoryRepository,
@@ -29,6 +31,7 @@ public class ItemService {
                        TagRepository tagRepository,
                        ImageRepository imageRepository,
                        CategoryAttributeTemplateRepository templateRepository,
+                       ImageMapper imageMapper,
                        ItemMapper itemMapper) {
         this.itemRepository = itemRepository;
         this.categoryRepository = categoryRepository;
@@ -37,6 +40,7 @@ public class ItemService {
         this.imageRepository = imageRepository;
         this.templateRepository = templateRepository;
         this.itemMapper = itemMapper;
+        this.imageMapper = imageMapper;
     }
 
     public List<Item> getAllItems() {
@@ -252,6 +256,7 @@ public class ItemService {
         }
 
         item.setDateModified(LocalDateTime.now());
+
         return itemMapper.toDto(itemRepository.save(item));
     }
 

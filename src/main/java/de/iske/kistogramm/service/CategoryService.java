@@ -86,4 +86,15 @@ public class CategoryService {
     public void deleteTemplate(Integer id) {
         templateRepository.deleteById(id);
     }
+
+    public Category updateCategory(Integer id, Category updatedCategory) {
+        CategoryEntity entity = categoryRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Category not found: " + id));
+
+        entity.setName(updatedCategory.getName());
+        entity.setDateModified(LocalDateTime.now());
+
+        CategoryEntity saved = categoryRepository.save(entity);
+        return categoryMapper.toDto(saved);
+    }
 }

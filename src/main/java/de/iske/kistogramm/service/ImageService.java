@@ -42,4 +42,9 @@ public class ImageService {
     public void deleteImage(Integer id) {
         imageRepository.deleteById(id);
     }
+
+    public Optional<byte[]> getImageData(Integer id) {
+        return imageRepository.findById(id)
+                .map(ImageEntity::getData);
+    }
 }

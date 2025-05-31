@@ -2,6 +2,7 @@ package de.iske.kistogramm.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.iske.kistogramm.dto.Item;
+import de.iske.kistogramm.dto.Room;
 import de.iske.kistogramm.dto.Storage;
 import de.iske.kistogramm.repository.CategoryRepository;
 import de.iske.kistogramm.repository.ItemRepository;
@@ -40,7 +41,6 @@ class ItemControllerTest {
     private Integer clothingCategoryId;
     private Integer foodCategoryId;
     private Integer electronicCategoryId;
-
 
     @BeforeEach
     void setup() {
@@ -534,9 +534,22 @@ class ItemControllerTest {
 
     @Test
     void shouldAssignStorageToItem() throws Exception {
+        // Step 1: Optional Raum anlegen
+        Room room = new Room();
+        room.setName("Keller");
+
+        String roomJson = mockMvc.perform(post("/api/rooms")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(room)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        Room createdRoom = objectMapper.readValue(roomJson, Room.class);
+
         // Schritt 1: Erstelle ein Storage
         Storage storage = new Storage();
         storage.setName("Lager A");
+        storage.setRoomId(createdRoom.getId());
         storage.setDescription("Im Keller");
 
         Storage savedStorage = objectMapper.readValue(
@@ -579,9 +592,22 @@ class ItemControllerTest {
 
     @Test
     void shouldAssignDifferentStorageToItem() throws Exception {
+        // Step 1: Optional Raum anlegen
+        Room room = new Room();
+        room.setName("Keller");
+
+        String roomJson = mockMvc.perform(post("/api/rooms")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(room)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        Room createdRoom = objectMapper.readValue(roomJson, Room.class);
+
         // Storage 1 erstellen
         Storage storageA = new Storage();
         storageA.setName("Regal A");
+        storageA.setRoomId(createdRoom.getId());
 
         Storage savedStorageA = objectMapper.readValue(
                 mockMvc.perform(post("/api/storages")
@@ -595,6 +621,7 @@ class ItemControllerTest {
         // Storage 2 erstellen
         Storage storageB = new Storage();
         storageB.setName("Regal B");
+        storageB.setRoomId(createdRoom.getId());
 
         Storage savedStorageB = objectMapper.readValue(
                 mockMvc.perform(post("/api/storages")
@@ -640,9 +667,22 @@ class ItemControllerTest {
 
     @Test
     void shouldUnassignStorageFromItem() throws Exception {
+        // Step 1: Optional Raum anlegen
+        Room room = new Room();
+        room.setName("Keller");
+
+        String roomJson = mockMvc.perform(post("/api/rooms")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(room)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        Room createdRoom = objectMapper.readValue(roomJson, Room.class);
+
         // Schritt 1: Erstelle ein Storage
         Storage storage = new Storage();
         storage.setName("Werkbank");
+        storage.setRoomId(createdRoom.getId());
         storage.setDescription("In der Garage");
 
         Storage savedStorage = objectMapper.readValue(
@@ -684,7 +724,4 @@ class ItemControllerTest {
         assertThat(updatedItem.getStorageId()).isNull();
         assertThat(updatedItem.getDateModified()).isNotNull();
     }
-
-
-
 }

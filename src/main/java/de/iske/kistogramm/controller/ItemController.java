@@ -72,8 +72,8 @@ public class ItemController {
     @PostMapping("/{id}/images")
     public ResponseEntity<Item> uploadImages(@PathVariable Integer id,
                                              @RequestParam("files") List<MultipartFile> files) {
-        Item updated = itemService.uploadImages(id, files);
-        return ResponseEntity.ok(updated);
+        var updatedItem = itemService.uploadImages(id, files);
+        return ResponseEntity.ok(updatedItem);
     }
 
     @DeleteMapping("/{itemId}/images/{imageId}")

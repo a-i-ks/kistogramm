@@ -28,6 +28,9 @@ public class RoomEntity {
     @OneToMany(mappedBy = "room", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<StorageEntity> storages;
 
+    @ManyToOne
+    private ImageEntity image;
+
     public Integer getId() {
         return id;
     }
@@ -84,6 +87,14 @@ public class RoomEntity {
         this.storages = storages;
     }
 
+    public ImageEntity getImage() {
+        return image;
+    }
+
+    public void setImage(ImageEntity image) {
+        this.image = image;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;
@@ -109,10 +120,24 @@ public class RoomEntity {
                 .add("id", id)
                 .add("uuid", uuid)
                 .add("name", name)
-                .add("storages", storages)
+                .add("imageId", image != null ? image.getId() : null)
+                .add("storageIds", getStoragesIds())
                 .add("description", description)
                 .add("dateAdded", dateAdded)
                 .add("dateModified", dateModified)
                 .toString();
+    }
+
+    private String getStoragesIds() {
+        if (storages == null || storages.isEmpty()) {
+            return "[]";
+        }
+        StringBuilder sb = new StringBuilder("[");
+        for (StorageEntity storage : storages) {
+            sb.append(storage.getId()).append(", ");
+        }
+        sb.setLength(sb.length() - 2); // Remove last comma and space
+        sb.append("]");
+        return sb.toString();
     }
 }

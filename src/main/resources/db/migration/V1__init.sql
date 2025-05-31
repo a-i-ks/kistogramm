@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS rooms (
     uuid UUID NOT NULL UNIQUE,
     name VARCHAR(255) NOT NULL,
     description TEXT,
+    image_id INT,
     date_added TIMESTAMP,
     date_modified TIMESTAMP
 );

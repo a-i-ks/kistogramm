@@ -1,16 +1,23 @@
 package de.iske.kistogramm.service;
 
+import de.iske.kistogramm.dto.Image;
 import de.iske.kistogramm.dto.Storage;
+import de.iske.kistogramm.mapper.ImageMapper;
 import de.iske.kistogramm.mapper.StorageMapper;
+import de.iske.kistogramm.model.ImageEntity;
 import de.iske.kistogramm.model.RoomEntity;
 import de.iske.kistogramm.model.StorageEntity;
 import de.iske.kistogramm.model.TagEntity;
+import de.iske.kistogramm.repository.ImageRepository;
 import de.iske.kistogramm.repository.RoomRepository;
 import de.iske.kistogramm.repository.StorageRepository;
 import de.iske.kistogramm.repository.TagRepository;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -22,15 +29,21 @@ public class StorageService {
     private final RoomRepository roomRepository;
     private final TagRepository tagRepository;
     private final StorageMapper storageMapper;
+    private final ImageRepository imageRepository;
+    private final ImageMapper imageMapper;
 
     public StorageService(StorageRepository storageRepository,
                           RoomRepository roomRepository,
                           TagRepository tagRepository,
-                          StorageMapper storageMapper) {
+                          ImageRepository imageRepository,
+                          StorageMapper storageMapper,
+                          ImageMapper imageMapper) {
         this.storageRepository = storageRepository;
         this.roomRepository = roomRepository;
+        this.imageRepository = imageRepository;
         this.tagRepository = tagRepository;
         this.storageMapper = storageMapper;
+        this.imageMapper = imageMapper;
     }
 
     public List<Storage> getAll() {
@@ -67,6 +80,8 @@ public class StorageService {
             RoomEntity room = roomRepository.findById(dto.getRoomId())
                     .orElseThrow(() -> new IllegalArgumentException("Room not found"));
             entity.setRoom(room);
+        } else {
+            throw new IllegalArgumentException("roomId must be provided");
         }
 
         // set parent storage
@@ -88,7 +103,81 @@ public class StorageService {
         return storageMapper.toDto(storageRepository.save(entity));
     }
 
+    public Storage updateStorage(Integer id, Storage updatedStorage) {
+        StorageEntity entity = storageRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Storage not found: " + id));
+
+        entity.setName(updatedStorage.getName());
+        entity.setDescription(updatedStorage.getDescription());
+        entity.setDateModified(LocalDateTime.now());
+
+        if (updatedStorage.getRoomId() != null) {
+            RoomEntity room = roomRepository.findById(updatedStorage.getRoomId())
+                    .orElseThrow(() -> new EntityNotFoundException("Room not found: " + updatedStorage.getRoomId()));
+            entity.setRoom(room);
+        }
+
+        if (updatedStorage.getParentStorageId() != null) {
+            StorageEntity parent = storageRepository.findById(updatedStorage.getParentStorageId())
+                    .orElseThrow(() -> new EntityNotFoundException("Parent storage not found: " + updatedStorage.getParentStorageId()));
+            entity.setParentStorage(parent);
+        } else {
+            entity.setParentStorage(null);
+        }
+
+        // Optional: Tags neu zuweisen
+        if (updatedStorage.getTagIds() != null) {
+            List<TagEntity> tags = tagRepository.findAllById(updatedStorage.getTagIds());
+            entity.setTags(new HashSet<>(tags));
+        }
+
+        StorageEntity saved = storageRepository.save(entity);
+        return storageMapper.toDto(saved);
+    }
+
     public void delete(Integer id) {
         storageRepository.deleteById(id);
+    }
+
+    public Storage uploadImages(Integer storageId, List<MultipartFile> files) {
+        StorageEntity storage = storageRepository.findById(storageId)
+                .orElseThrow(() -> new EntityNotFoundException("Storage not found: " + storageId));
+
+        for (MultipartFile file : files) {
+            try {
+                ImageEntity image = new ImageEntity();
+                image.setData(file.getBytes());
+                image.setDateAdded(LocalDateTime.now());
+                image.setDateModified(LocalDateTime.now());
+                image.setStorage(storage);
+                imageRepository.save(image);
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to read uploaded file", e);
+            }
+        }
+
+        storage.setDateModified(LocalDateTime.now());
+
+        return storageMapper.toDto(storageRepository.save(storage));
+    }
+
+    public List<Image> getImagesByStorageId(Integer storageId) {
+        StorageEntity storage = storageRepository.findById(storageId)
+                .orElseThrow(() -> new EntityNotFoundException("Storage not found: " + storageId));
+
+        return storage.getImages()
+                .stream().map(imageMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    public Image getImageByStorageIdAndImageId(Integer storageId, Integer imageId) {
+        StorageEntity storage = storageRepository.findById(storageId)
+                .orElseThrow(() -> new EntityNotFoundException("Storage not found: " + storageId));
+
+        ImageEntity imageEntity = storage.getImages().stream()
+                .filter(p -> p.getId().equals(imageId)).findFirst().orElseThrow(
+                        () -> new EntityNotFoundException("Image not found: " + imageId));
+
+        return imageMapper.toDto(imageEntity);
     }
 }

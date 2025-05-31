@@ -12,6 +12,7 @@ public class Room {
     private UUID uuid;
     private String name;
     private String description;
+    private Integer imageId;
     private LocalDateTime dateAdded;
     private LocalDateTime dateModified;
 
@@ -45,6 +46,14 @@ public class Room {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public Integer getImageId() {
+        return imageId;
+    }
+
+    public void setImageId(Integer imageId) {
+        this.imageId = imageId;
     }
 
     public LocalDateTime getDateAdded() {
@@ -85,6 +94,7 @@ public class Room {
                 .add("id", id)
                 .add("uuid", uuid)
                 .add("name", name)
+                .add("imageId", imageId)
                 .add("description", description)
                 .add("dateAdded", dateAdded)
                 .add("dateModified", dateModified)

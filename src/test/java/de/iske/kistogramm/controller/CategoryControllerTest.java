@@ -54,6 +54,45 @@ public class CategoryControllerTest {
     }
 
     @Test
+    void shouldUpdateCategoryNameSuccessfully() throws Exception {
+        // Step 1: Ursprüngliche Kategorie anlegen
+        Category original = new Category();
+        original.setName("Cat1");
+
+        String json = mockMvc.perform(post("/api/categories")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(original)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        Category created = objectMapper.readValue(json, Category.class);
+        assertThat(created.getId()).isNotNull();
+        assertThat(created.getName()).isEqualTo("Cat1");
+
+        // Step 2: Kategorie ändern
+        created.setName("Haushaltsgeräte");
+
+        String updatedJson = mockMvc.perform(put("/api/categories/" + created.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(created)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        Category updated = objectMapper.readValue(updatedJson, Category.class);
+
+        // Step 3: Validierung
+        assertThat(updated.getName()).isEqualTo("Haushaltsgeräte");
+
+        // Optional: nochmal abrufen und prüfen
+        String response = mockMvc.perform(get("/api/categories/" + created.getId()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        Category fetched = objectMapper.readValue(response, Category.class);
+        assertThat(fetched.getName()).isEqualTo("Haushaltsgeräte");
+    }
+
+    @Test
     void shouldCreateMultipleCategoriesAndFetchAll() throws Exception {
         // Arrange: Kategorien erstellen
         List<String> names = List.of("K1", "K2", "K3");
