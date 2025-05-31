@@ -1,5 +1,6 @@
 package de.iske.kistogramm.controller;
 
+import de.iske.kistogramm.dto.Image;
 import de.iske.kistogramm.dto.Item;
 import de.iske.kistogramm.service.ItemService;
 import org.springframework.http.ResponseEntity;
@@ -70,10 +71,18 @@ public class ItemController {
     }
 
     @PostMapping("/{id}/images")
+    @Transactional
     public ResponseEntity<Item> uploadImages(@PathVariable Integer id,
                                              @RequestParam("files") List<MultipartFile> files) {
         var updatedItem = itemService.uploadImages(id, files);
         return ResponseEntity.ok(updatedItem);
+    }
+
+    @GetMapping("/{id}/images")
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<Image>> getImagesByItemId(@PathVariable Integer id) {
+        List<Image> imageIds = itemService.getImageIdsByItemId(id);
+        return ResponseEntity.ok(imageIds);
     }
 
     @DeleteMapping("/{itemId}/images/{imageId}")

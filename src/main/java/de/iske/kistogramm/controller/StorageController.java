@@ -74,4 +74,18 @@ public class StorageController {
         return ResponseEntity.ok(storageService.getImageByStorageIdAndImageId(storageId, imageId));
     }
 
+    @DeleteMapping("/{storageId}/images/{imageId}")
+    @Transactional
+    public ResponseEntity<Void> deleteImageFromStorage(@PathVariable Integer storageId, @PathVariable Integer imageId) {
+        storageService.deleteImageFromStorage(storageId, imageId);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/{storageId}/images")
+    @Transactional
+    public ResponseEntity<Void> deleteAllImagesFromStorage(@PathVariable Integer storageId) {
+        storageService.deleteAllImagesFromStorage(storageId);
+        return ResponseEntity.ok().build();
+    }
+
 }

@@ -1,5 +1,6 @@
 package de.iske.kistogramm.service;
 
+import de.iske.kistogramm.dto.Image;
 import de.iske.kistogramm.dto.Item;
 import de.iske.kistogramm.mapper.ImageMapper;
 import de.iske.kistogramm.mapper.ItemMapper;
@@ -285,5 +286,14 @@ public class ItemService {
         return itemRepository.findByTagsId(tagId).stream()
                 .map(itemMapper::toDto)
                 .toList();
+    }
+
+    public List<Image> getImageIdsByItemId(Integer id) {
+        ItemEntity item = itemRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Item not found: " + id));
+
+        return item.getImages().stream()
+                .map(imageMapper::toDto)
+                .collect(Collectors.toList());
     }
 }

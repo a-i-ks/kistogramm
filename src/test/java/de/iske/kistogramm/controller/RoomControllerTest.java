@@ -2,6 +2,7 @@ package de.iske.kistogramm.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import de.iske.kistogramm.dto.Image;
 import de.iske.kistogramm.dto.Item;
 import de.iske.kistogramm.dto.Room;
 import de.iske.kistogramm.dto.Storage;
@@ -12,8 +13,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -348,5 +351,117 @@ public class RoomControllerTest {
                         .content(objectMapper.writeValueAsString(storage)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message", containsString("roomId")));
+    }
+
+    @Test
+    void shouldUploadImageToRoomAndVerifyAccess() throws Exception {
+        // 1. Raum anlegen
+        Room room = new Room();
+        room.setName("Wohnzimmer");
+        room.setDescription("Hauptwohnraum");
+
+        Room savedRoom = objectMapper.readValue(
+                mockMvc.perform(post("/api/rooms")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(room)))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString(),
+                Room.class
+        );
+
+        // 2. Bild erzeugen
+        MockMultipartFile imageFile = new MockMultipartFile(
+                "file",
+                "wohnzimmer.jpg",
+                MediaType.IMAGE_JPEG_VALUE,
+                "image-content".getBytes(StandardCharsets.UTF_8)
+        );
+
+        // 3. Upload durchführen
+        Room updatedRoom = objectMapper.readValue(
+                mockMvc.perform(multipart("/api/rooms/" + savedRoom.getId() + "/image")
+                                .file(imageFile))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString(),
+                Room.class
+        );
+
+        // 4. Bild-ID im Raum prüfen
+        assertThat(updatedRoom.getImageId()).isNotNull();
+
+        // 5. Bild abrufen über: /api/rooms/{roomId}/image
+        Image imageByRoom = objectMapper.readValue(
+                mockMvc.perform(get("/api/rooms/" + savedRoom.getId() + "/image"))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString(),
+                Image.class
+        );
+
+        assertThat(imageByRoom.getId()).isEqualTo(updatedRoom.getImageId());
+
+        // 6. Bild abrufen über: /api/images/{id}
+        Image imageById = objectMapper.readValue(
+                mockMvc.perform(get("/api/images/" + imageByRoom.getId()))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString(),
+                Image.class
+        );
+
+        assertThat(imageById.getId()).isEqualTo(imageByRoom.getId());
+    }
+
+    @Test
+    void shouldUploadAndDeleteRoomImageSuccessfully() throws Exception {
+        // 1. Raum anlegen
+        Room room = new Room();
+        room.setName("Badezimmer");
+        room.setDescription("Mit Dusche");
+
+        Room savedRoom = objectMapper.readValue(
+                mockMvc.perform(post("/api/rooms")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(room)))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString(),
+                Room.class
+        );
+
+        // 2. Bild vorbereiten und hochladen
+        MockMultipartFile imageFile = new MockMultipartFile(
+                "file",
+                "bathroom.jpg",
+                MediaType.IMAGE_JPEG_VALUE,
+                "dummy-image-data".getBytes(StandardCharsets.UTF_8)
+        );
+
+        Room roomWithImage = objectMapper.readValue(
+                mockMvc.perform(multipart("/api/rooms/" + savedRoom.getId() + "/image")
+                                .file(imageFile))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString(),
+                Room.class
+        );
+
+        Integer imageId = roomWithImage.getImageId();
+        assertThat(imageId).isNotNull();
+
+        // 3. Bild ist abrufbar über /api/rooms/{roomId}/image
+        mockMvc.perform(get("/api/rooms/" + savedRoom.getId() + "/image"))
+                .andExpect(status().isOk());
+
+        // 4. Bild ist abrufbar über /api/images/{imageId}
+        mockMvc.perform(get("/api/images/" + imageId))
+                .andExpect(status().isOk());
+
+        // 5. Bild löschen
+        mockMvc.perform(delete("/api/rooms/" + savedRoom.getId() + "/image"))
+                .andExpect(status().isNoContent());
+
+        // 6. Bild nicht mehr abrufbar
+        mockMvc.perform(get("/api/rooms/" + savedRoom.getId() + "/image"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/api/images/" + imageId))
+                .andExpect(status().isNotFound());
     }
 }

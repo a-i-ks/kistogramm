@@ -180,4 +180,35 @@ public class StorageService {
 
         return imageMapper.toDto(imageEntity);
     }
+
+    public void deleteImageFromStorage(Integer storageId, Integer imageId) {
+        StorageEntity storage = storageRepository.findById(storageId)
+                .orElseThrow(() -> new IllegalArgumentException("Storage not found: " + storageId));
+
+        ImageEntity image = imageRepository.findById(imageId)
+                .orElseThrow(() -> new IllegalArgumentException("Image not found: " + imageId));
+
+        if (!storage.getImages().contains(image)) {
+            throw new IllegalArgumentException("Image does not belong to this storage");
+        }
+
+        storage.setDateModified(LocalDateTime.now());
+
+        storage.getImages().remove(image);
+        imageRepository.delete(image);
+        storageRepository.save(storage);
+    }
+
+    public void deleteAllImagesFromStorage(Integer storageId) {
+        StorageEntity storage = storageRepository.findById(storageId)
+                .orElseThrow(() -> new IllegalArgumentException("Storage not found: " + storageId));
+        if (storage.getImages() != null) {
+            for (ImageEntity image : storage.getImages()) {
+                imageRepository.delete(image);
+            }
+            storage.getImages().clear();
+            storage.setDateModified(LocalDateTime.now());
+            storageRepository.save(storage);
+        }
+    }
 }

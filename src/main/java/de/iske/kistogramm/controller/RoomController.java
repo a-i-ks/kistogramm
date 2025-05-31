@@ -1,5 +1,6 @@
 package de.iske.kistogramm.controller;
 
+import de.iske.kistogramm.dto.Image;
 import de.iske.kistogramm.dto.Item;
 import de.iske.kistogramm.dto.Room;
 import de.iske.kistogramm.dto.Storage;
@@ -7,6 +8,7 @@ import de.iske.kistogramm.service.RoomService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -47,18 +49,45 @@ public class RoomController {
     }
 
     @PostMapping
+    @Transactional
     public ResponseEntity<Room> createRoom(@RequestBody Room room) {
         return ResponseEntity.ok(roomService.createRoom(room));
     }
 
     @PutMapping("/{id}")
+    @Transactional
     public ResponseEntity<Room> updateRoom(@PathVariable Integer id, @RequestBody Room updatedRoom) {
         return ResponseEntity.ok(roomService.updateRoom(id, updatedRoom));
     }
 
     @DeleteMapping("/{id}")
+    @Transactional
     public ResponseEntity<Void> deleteRoom(@PathVariable Integer id) {
         roomService.deleteRoom(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{roomId}/image")
+    @Transactional(readOnly = true)
+    public ResponseEntity<Image> getRoomImage(@PathVariable Integer roomId) {
+        return roomService.getRoomImage(roomId)
+                .map(imageData -> ResponseEntity.ok().body(imageData))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/{roomId}/image")
+    @Transactional
+    public ResponseEntity<Room> uploadRoomImage(
+            @PathVariable Integer roomId,
+            @RequestParam("file") MultipartFile file) {
+        Room updated = roomService.uploadImage(roomId, file);
+        return ResponseEntity.ok(updated);
+    }
+
+    @DeleteMapping("/{roomId}/image")
+    @Transactional
+    public ResponseEntity<Void> deleteRoomImage(@PathVariable Integer roomId) {
+        roomService.deleteImage(roomId);
         return ResponseEntity.noContent().build();
     }
 }
