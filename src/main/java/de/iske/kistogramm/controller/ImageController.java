@@ -44,17 +44,20 @@ public class ImageController {
     }
 
     @PostMapping
+    @Transactional
     public ResponseEntity<Image> createImage(@RequestBody Image image) {
         return ResponseEntity.ok(imageService.createImage(image));
     }
 
     @DeleteMapping("/{id}")
+    @Transactional
     public ResponseEntity<Void> deleteImage(@PathVariable Integer id) {
         imageService.deleteImage(id);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/upload")
+    @Transactional
     public ResponseEntity<Image> uploadImage(@RequestParam("file") MultipartFile file) throws IOException {
         Image image = new Image();
         image.setData(file.getBytes());

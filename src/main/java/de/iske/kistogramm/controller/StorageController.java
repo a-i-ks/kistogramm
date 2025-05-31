@@ -55,6 +55,7 @@ public class StorageController {
     }
 
     @PostMapping("/{id}/images")
+    @Transactional
     public ResponseEntity<Storage> uploadImages(@PathVariable Integer id,
                                                 @RequestParam("files") List<MultipartFile> files) {
         var updatedStorage = storageService.uploadImages(id, files);

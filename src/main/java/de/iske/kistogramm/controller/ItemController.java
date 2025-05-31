@@ -85,7 +85,15 @@ public class ItemController {
         return ResponseEntity.ok(imageIds);
     }
 
+    @DeleteMapping("/{itemId}/images")
+    @Transactional
+    public ResponseEntity<Void> deleteAllImagesFromItem(@PathVariable Integer itemId) {
+        itemService.deleteAllImagesFromItem(itemId);
+        return ResponseEntity.ok().build();
+    }
+
     @DeleteMapping("/{itemId}/images/{imageId}")
+    @Transactional
     public ResponseEntity<Void> deleteItemImage(@PathVariable Integer itemId, @PathVariable Integer imageId) {
         itemService.deleteImageFromItem(itemId, imageId);
         return ResponseEntity.ok().build();

@@ -60,17 +60,20 @@ public class CategoryController {
     }
 
     @PostMapping
+    @Transactional
     public ResponseEntity<Category> createCategory(@RequestBody Category category) {
         return ResponseEntity.ok(categoryService.createCategory(category));
     }
 
     @PutMapping("/{id}")
+    @Transactional
     public ResponseEntity<Category> updateCategory(@PathVariable Integer id, @RequestBody Category category) {
         Category updated = categoryService.updateCategory(id, category);
         return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
+    @Transactional
     public ResponseEntity<Void> deleteCategory(@PathVariable Integer id) {
         categoryService.deleteCategory(id);
         return ResponseEntity.noContent().build();

@@ -296,4 +296,18 @@ public class ItemService {
                 .map(imageMapper::toDto)
                 .collect(Collectors.toList());
     }
+
+    public void deleteAllImagesFromItem(Integer itemId) {
+        ItemEntity item = itemRepository.findById(itemId)
+                .orElseThrow(() -> new IllegalArgumentException("Item not found: " + itemId));
+
+        // Alle Bilder des Items löschen
+        for (ImageEntity image : item.getImages()) {
+            imageRepository.delete(image);
+        }
+        // Bilder aus der Item-Referenz entfernen
+        item.getImages().clear();
+        item.setDateModified(LocalDateTime.now());
+        itemRepository.save(item);
+    }
 }

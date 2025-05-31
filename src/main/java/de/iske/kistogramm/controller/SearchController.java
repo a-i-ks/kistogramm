@@ -3,6 +3,7 @@ package de.iske.kistogramm.controller;
 import de.iske.kistogramm.service.SearchService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -19,6 +20,7 @@ public class SearchController {
     }
 
     @GetMapping("/{uuid}")
+    @Transactional(readOnly = true)
     public ResponseEntity<?> searchByUuid(
             @PathVariable UUID uuid,
             @RequestParam(value = "type", required = false) String type) {
