@@ -1,6 +1,7 @@
 package de.iske.kistogramm.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import de.iske.kistogramm.dto.Image;
 import de.iske.kistogramm.dto.Room;
 import de.iske.kistogramm.dto.Storage;
 import org.junit.jupiter.api.Test;
@@ -191,8 +192,18 @@ public class StorageControllerTest {
         Integer imageId = updatedStorage.getImageIds().getFirst();
 
         // Step 5: Retrieve the image by ID
-        mockMvc.perform(get("/api/images/" + imageId))
-                .andExpect(status().isOk());
-        //        .andExpect(content().contentType(MediaType.IMAGE_JPEG));
+        var image = objectMapper.readValue(mockMvc.perform(get("/api/images/" + imageId))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Image.class);
+        assertThat(image.getId()).isEqualTo(imageId);
+        assertThat(image.getData()).isNotNull(); // Ensure image data is not null
+
+        // Check if image is available via storage api path
+        mockMvc.perform(get("/api/storages/" + savedStorage.getId() + "/images/" + imageId))
+                .andExpect(status().isOk())
+                .andExpect(result -> {
+                    Image image1 = objectMapper.readValue(result.getResponse().getContentAsString(), Image.class);
+                    assertThat(image1.getUuid()).isEqualTo(image.getUuid());
+                });
     }
 }
