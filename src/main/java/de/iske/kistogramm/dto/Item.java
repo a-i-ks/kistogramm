@@ -1,5 +1,7 @@
 package de.iske.kistogramm.dto;
 
+import com.google.common.base.MoreObjects;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -22,7 +24,7 @@ public class Item {
     private Set<Integer> relatedItemIds = new HashSet<>();
     private Set<Integer> imageIds = new HashSet<>();
 
-    private Map<String, String> dynamicAttributes = new HashMap<>();
+    private Map<String, String> customAttributes = new HashMap<>();
 
     public Integer getId() {
         return id;
@@ -136,12 +138,12 @@ public class Item {
         this.imageIds = imageIds;
     }
 
-    public Map<String, String> getDynamicAttributes() {
-        return dynamicAttributes;
+    public Map<String, String> getCustomAttributes() {
+        return customAttributes;
     }
 
-    public void setDynamicAttributes(Map<String, String> dynamicAttributes) {
-        this.dynamicAttributes = dynamicAttributes;
+    public void setCustomAttributes(Map<String, String> customAttributes) {
+        this.customAttributes = customAttributes;
     }
 
     @Override
@@ -163,14 +165,23 @@ public class Item {
 
     @Override
     public String toString() {
-        return com.google.common.base.MoreObjects.toStringHelper(this)
+        MoreObjects.ToStringHelper stringHelper = MoreObjects.toStringHelper(this)
                 .add("id", id)
                 .add("uuid", uuid)
                 .add("name", name)
                 .add("description", description)
                 .add("purchaseDate", purchaseDate)
                 .add("purchasePrice", purchasePrice)
-                .add("quantity", quantity)
-                .toString();
+                .add("quantity", quantity);
+        // add custom attributes if they exist
+        if (customAttributes != null && !customAttributes.isEmpty()) {
+            customAttributes.keySet().forEach(key -> {
+                String value = customAttributes.get(key);
+                if (value != null && !value.isEmpty()) {
+                    stringHelper.add(key, value);
+                }
+            });
+        }
+        return stringHelper.toString();
     }
 }
