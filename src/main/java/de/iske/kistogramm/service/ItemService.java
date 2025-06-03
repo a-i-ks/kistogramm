@@ -76,12 +76,12 @@ public class ItemService {
             List<CategoryAttributeTemplateEntity> templates =
                     templateRepository.findByCategoryId(dto.getCategoryId());
 
-            if (dto.getDynamicAttributes() == null) {
-                dto.setDynamicAttributes(new HashMap<>());
+            if (dto.getCustomAttributes() == null) {
+                dto.setCustomAttributes(new HashMap<>());
             }
 
             for (CategoryAttributeTemplateEntity template : templates) {
-                dto.getDynamicAttributes().putIfAbsent(template.getAttributeName(), "");
+                dto.getCustomAttributes().putIfAbsent(template.getAttributeName(), "");
             }
         }
 
@@ -111,7 +111,7 @@ public class ItemService {
         }
 
         // dynamic attributes
-        entity.setDynamicAttributes(dto.getDynamicAttributes());
+        entity.setCustomAttributes(dto.getCustomAttributes());
         entity.setDateAdded(LocalDateTime.now());
         entity.setDateModified(LocalDateTime.now());
 
@@ -135,8 +135,8 @@ public class ItemService {
         entity.setDateModified(LocalDateTime.now());
 
         // Custom Attribute aktualisieren (auch ohne Kategorie erlaubt)
-        if (updatedItem.getDynamicAttributes() != null) {
-            entity.setDynamicAttributes(updatedItem.getDynamicAttributes());
+        if (updatedItem.getCustomAttributes() != null) {
+            entity.setCustomAttributes(updatedItem.getCustomAttributes());
         }
 
         // Kategorie zuweisen oder ändern
@@ -152,12 +152,12 @@ public class ItemService {
                 // Templates auslesen
                 List<CategoryAttributeTemplateEntity> templates = templateRepository.findByCategoryId(newCategory.getId());
 
-                Map<String, String> currentAttrs = new HashMap<>(entity.getDynamicAttributes());
+                Map<String, String> currentAttrs = new HashMap<>(entity.getCustomAttributes());
                 for (CategoryAttributeTemplateEntity template : templates) {
                     currentAttrs.putIfAbsent(template.getAttributeName(), "");
                 }
 
-                entity.setDynamicAttributes(currentAttrs);
+                entity.setCustomAttributes(currentAttrs);
             }
         } else {
             // Kategorie entfernen (falls gewünscht) – optional, je nach Bedarf

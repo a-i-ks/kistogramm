@@ -60,7 +60,7 @@ public class ItemEntity {
     @CollectionTable(name = "item_attributes", joinColumns = @JoinColumn(name = "item_id"))
     @MapKeyColumn(name = "attribute_key")
     @Column(name = "attribute_value")
-    private Map<String, String> dynamicAttributes = new HashMap<>();
+    private Map<String, String> customAttributes = new HashMap<>();
 
     // Getter & Setter
     public Integer getId() {
@@ -159,12 +159,12 @@ public class ItemEntity {
         this.images = images;
     }
 
-    public Map<String, String> getDynamicAttributes() {
-        return dynamicAttributes;
+    public Map<String, String> getCustomAttributes() {
+        return customAttributes;
     }
 
-    public void setDynamicAttributes(Map<String, String> dynamicAttributes) {
-        this.dynamicAttributes = dynamicAttributes;
+    public void setCustomAttributes(Map<String, String> customAttributes) {
+        this.customAttributes = customAttributes;
     }
 
     public LocalDateTime getDateAdded() {
@@ -227,7 +227,7 @@ public class ItemEntity {
                 .add("relatedItems", relatedItems.size())
                 .add("tags", tags.size())
                 .add("images", images.size())
-                .add("dynamicAttributes", dynamicAttributes)
+                .add("customAttributes", customAttributes)
                 .add("dateAdded", dateAdded)
                 .add("dateModified", dateModified);
     }

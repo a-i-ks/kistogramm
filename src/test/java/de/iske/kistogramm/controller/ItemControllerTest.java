@@ -320,12 +320,12 @@ class ItemControllerTest {
     }
 
     @Test
-    void whenCreatingClothingItemThenDynamicAttributesShouldContainCustomFields() throws Exception {
+    void whenCreatingClothingItemThenCustomAttributesShouldContainCustomFields() throws Exception {
         Item item = new Item();
         item.setName("Jeans");
         item.setCategoryId(clothingCategoryId);
         item.setQuantity(1);
-        item.setDynamicAttributes(new HashMap<>());
+        item.setCustomAttributes(new HashMap<>());
 
         String response = mockMvc.perform(post("/api/items")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -335,7 +335,7 @@ class ItemControllerTest {
 
         Item created = objectMapper.readValue(response, Item.class);
 
-        assertThat(created.getDynamicAttributes()).containsKeys("Größe", "Zuletzt getragen");
+        assertThat(created.getCustomAttributes()).containsKeys("Größe", "Zuletzt getragen");
     }
 
     @Test
@@ -344,7 +344,7 @@ class ItemControllerTest {
         item.setName("Butter");
         item.setCategoryId(clothingCategoryId);
         item.setQuantity(1);
-        item.setDynamicAttributes(Map.of("Größe", "M"));
+        item.setCustomAttributes(Map.of("Größe", "M"));
 
         String createResp = mockMvc.perform(post("/api/items")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -363,7 +363,7 @@ class ItemControllerTest {
 
         Item updated = objectMapper.readValue(updateResp, Item.class);
 
-        assertThat(updated.getDynamicAttributes())
+        assertThat(updated.getCustomAttributes())
                 .containsKey("MHD")
                 .containsKey("Größe");
     }
@@ -378,7 +378,7 @@ class ItemControllerTest {
         // Manuell vorher gesetztes Attribut
         Map<String, String> attributes = new HashMap<>();
         attributes.put("Größe", "L");
-        item.setDynamicAttributes(attributes);
+        item.setCustomAttributes(attributes);
 
         String response = mockMvc.perform(post("/api/items")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -388,15 +388,15 @@ class ItemControllerTest {
 
         Item created = objectMapper.readValue(response, Item.class);
 
-        assertThat(created.getDynamicAttributes()).containsEntry("Größe", "L");
-        assertThat(Collections.frequency(new ArrayList<>(created.getDynamicAttributes().keySet()), "Größe")).isEqualTo(1);
+        assertThat(created.getCustomAttributes()).containsEntry("Größe", "L");
+        assertThat(Collections.frequency(new ArrayList<>(created.getCustomAttributes().keySet()), "Größe")).isEqualTo(1);
     }
 
     @Test
     void testCreateItemReturnsBadRequestWithoutName() throws Exception {
         Item item = new Item(); // name is required
         item.setQuantity(1);
-        item.setDynamicAttributes(new HashMap<>());
+        item.setCustomAttributes(new HashMap<>());
 
         mockMvc.perform(post("/api/items")
                         .contentType(MediaType.APPLICATION_JSON)

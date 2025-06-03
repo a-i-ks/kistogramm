@@ -42,7 +42,7 @@ class ItemServiceTest {
         item.setDescription("Desc");
         item.setCategoryId(testCategoryId);
         item.setQuantity(1);
-        item.setDynamicAttributes(new HashMap<>());
+        item.setCustomAttributes(new HashMap<>());
 
         Item created = itemService.createItem(item);
 
