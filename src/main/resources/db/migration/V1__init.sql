@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS items (
 CREATE TABLE IF NOT EXISTS images (
     id SERIAL PRIMARY KEY,
     uuid UUID NOT NULL UNIQUE,
+    description TEXT,
     data BYTEA NOT NULL,
     date_added TIMESTAMP,
     date_modified TIMESTAMP,
@@ -117,6 +118,7 @@ CREATE TABLE IF NOT EXISTS item_attributes (
 -- Category Attribute Templates
 CREATE TABLE IF NOT EXISTS category_attribute_templates (
     id SERIAL PRIMARY KEY,
+    uuid UUID NOT NULL UNIQUE,
     category_id INT NOT NULL,
     attribute_name VARCHAR(255) NOT NULL,
     date_added TIMESTAMP,

@@ -27,7 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(properties = "spring.profiles.active=test")
 @AutoConfigureMockMvc
-public class RoomControllerTest {
+class RoomControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -226,7 +226,7 @@ public class RoomControllerTest {
         }
 
         // Abfrage aller Storages in Room A
-        String responseA = mockMvc.perform(get("/api/rooms/" + savedRoomA.getId() + "/storage"))
+        String responseA = mockMvc.perform(get("/api/rooms/" + savedRoomA.getId() + "/storages"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
@@ -236,7 +236,7 @@ public class RoomControllerTest {
         assertThat(storagesInRoomA).allMatch(s -> s.getRoomId().equals(savedRoomA.getId()));
 
         // Abfrage aller Storages in Room B
-        String responseB = mockMvc.perform(get("/api/rooms/" + savedRoomB.getId() + "/storage"))
+        String responseB = mockMvc.perform(get("/api/rooms/" + savedRoomB.getId() + "/storages"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 

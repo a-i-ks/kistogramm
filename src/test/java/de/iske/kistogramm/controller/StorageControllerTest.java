@@ -24,7 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(properties = "spring.profiles.active=test")
 @AutoConfigureMockMvc
-public class StorageControllerTest {
+class StorageControllerTest {
 
     @Autowired
     private MockMvc mockMvc;

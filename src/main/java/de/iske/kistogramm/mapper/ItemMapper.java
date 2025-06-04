@@ -1,6 +1,7 @@
 package de.iske.kistogramm.mapper;
 
 import de.iske.kistogramm.dto.Item;
+import de.iske.kistogramm.dto.export.ExportItem;
 import de.iske.kistogramm.model.ImageEntity;
 import de.iske.kistogramm.model.ItemEntity;
 import de.iske.kistogramm.model.TagEntity;
@@ -8,7 +9,9 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 
+import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Mapper(componentModel = "spring")
@@ -32,6 +35,24 @@ public interface ItemMapper {
         return images.stream().map(ImageEntity::getId).collect(Collectors.toSet());
     }
 
+    @Named("mapTagsToUuids")
+    static List<UUID> mapTagsToUuids(Set<TagEntity> tags) {
+        if (tags == null) return List.of();
+        return tags.stream().map(TagEntity::getUuid).collect(Collectors.toList());
+    }
+
+    @Named("mapRelatedEntitiesToUuids")
+    static List<UUID> mapRelatedEntitiesToUuids(Set<ItemEntity> items) {
+        if (items == null) return List.of();
+        return items.stream().map(ItemEntity::getUuid).collect(Collectors.toList());
+    }
+
+    @Named("mapImagesToUuids")
+    static List<UUID> mapImagesToUuids(Set<ImageEntity> images) {
+        if (images == null) return List.of();
+        return images.stream().map(ImageEntity::getUuid).collect(Collectors.toList());
+    }
+
     @Mapping(source = "category.id", target = "categoryId")
     @Mapping(source = "storage.id", target = "storageId")
     @Mapping(target = "tagIds", source = "tags", qualifiedByName = "mapTagsToIds")
@@ -45,4 +66,11 @@ public interface ItemMapper {
     @Mapping(target = "relatedItems", ignore = true) // Handhabung erfolgt im Service
     @Mapping(target = "images", ignore = true)
     ItemEntity toEntity(Item dto);
+
+    @Mapping(target = "category", source = "category.uuid")
+    @Mapping(target = "storage", source = "storage.uuid")
+    @Mapping(target = "tags", qualifiedByName = "mapTagsToUuids")
+    @Mapping(target = "relatedItems", qualifiedByName = "mapRelatedEntitiesToUuids")
+    @Mapping(target = "images", qualifiedByName = "mapImagesToUuids")
+    ExportItem toExportItem(ItemEntity entity);
 }

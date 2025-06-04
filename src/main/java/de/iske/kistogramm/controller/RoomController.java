@@ -34,7 +34,7 @@ public class RoomController {
         return roomService.getItemsByRoomId(roomId);
     }
 
-    @GetMapping("/{roomId}/storage")
+    @GetMapping("/{roomId}/storages")
     @Transactional(readOnly = true)
     public List<Storage> getStorageByRoomId(@PathVariable Integer roomId) {
         return roomService.getStorageByRoomId(roomId);

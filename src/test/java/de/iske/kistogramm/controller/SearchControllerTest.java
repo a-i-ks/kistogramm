@@ -20,7 +20,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(properties = "spring.profiles.active=test")
 @AutoConfigureMockMvc
-public class SearchControllerTest {
+class SearchControllerTest {
 
     private UUID itemUuid;
     private UUID storageUuid;

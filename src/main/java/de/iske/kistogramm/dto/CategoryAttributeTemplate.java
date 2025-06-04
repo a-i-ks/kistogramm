@@ -2,10 +2,12 @@ package de.iske.kistogramm.dto;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.UUID;
 
 public class CategoryAttributeTemplate {
 
     private Integer id;
+    private UUID uuid;
     private Integer categoryId;
     private String attributeName;
     private LocalDateTime dateAdded;
@@ -17,6 +19,14 @@ public class CategoryAttributeTemplate {
 
     public void setId(Integer id) {
         this.id = id;
+    }
+
+    public UUID getUuid() {
+        return uuid;
+    }
+
+    public void setUuid(UUID uuid) {
+        this.uuid = uuid;
     }
 
     public Integer getCategoryId() {
@@ -55,20 +65,21 @@ public class CategoryAttributeTemplate {
     public boolean equals(Object obj) {
         if (this == obj) return true;
         if (!(obj instanceof CategoryAttributeTemplate that)) return false;
-        if (getId() != null && Objects.equals(getId(), that.getId())) return true;
+        if (getUuid() != null && Objects.equals(getUuid(), that.getUuid())) return true;
         return Objects.equals(getCategoryId(), that.getCategoryId()) &&
                 Objects.equals(getAttributeName(), that.getAttributeName());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, categoryId, attributeName);
+        return Objects.hash(id, uuid, categoryId, attributeName);
     }
 
     @Override
     public String toString() {
         return com.google.common.base.MoreObjects.toStringHelper(this)
                 .add("id", id)
+                .add("uuid", uuid)
                 .add("categoryId", categoryId)
                 .add("attributeName", attributeName)
                 .add("dateAdded", dateAdded)

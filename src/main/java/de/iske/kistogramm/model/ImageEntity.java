@@ -17,6 +17,8 @@ public class ImageEntity {
     @Column(name = "uuid", nullable = false, unique = true)
     private UUID uuid;
 
+    private String description;
+
     @Column(name = "data", nullable = false, columnDefinition = "BYTEA")
     private byte[] data;
 
@@ -45,6 +47,14 @@ public class ImageEntity {
 
     public UUID getUuid() {
         return uuid;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     public void setUuid(UUID uuid) {
@@ -135,6 +145,7 @@ public class ImageEntity {
         return com.google.common.base.MoreObjects.toStringHelper(this)
                 .add("id", id)
                 .add("uuid", uuid)
+                .add("description", description)
                 .add("belongsTo", resolveOwner())
                 .add("data.length", data != null ? data.length : 0)
                 .add("dateAdded", dateAdded)

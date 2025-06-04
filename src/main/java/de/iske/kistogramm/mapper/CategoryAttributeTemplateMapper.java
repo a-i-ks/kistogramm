@@ -1,6 +1,7 @@
 package de.iske.kistogramm.mapper;
 
 import de.iske.kistogramm.dto.CategoryAttributeTemplate;
+import de.iske.kistogramm.dto.export.ExportCategoryAttributeTemplate;
 import de.iske.kistogramm.model.CategoryAttributeTemplateEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -12,6 +13,8 @@ public interface CategoryAttributeTemplateMapper {
     CategoryAttributeTemplate toDto(CategoryAttributeTemplateEntity entity);
 
     @Mapping(target = "category", ignore = true)
-        // Service setzt Referenz
     CategoryAttributeTemplateEntity toEntity(CategoryAttributeTemplate dto);
+
+    @Mapping(target = "category", source = "category.uuid")
+    ExportCategoryAttributeTemplate toExportCategoryAttributeTemplate(CategoryAttributeTemplateEntity categoryAttributeTemplateEntity);
 }

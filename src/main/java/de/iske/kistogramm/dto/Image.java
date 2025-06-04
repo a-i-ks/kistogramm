@@ -12,6 +12,7 @@ public class Image {
     private Integer id;
     private UUID uuid;
     private byte[] data;
+    private String description;
     private LocalDateTime dateAdded;
     private LocalDateTime dateModified;
 
@@ -37,6 +38,14 @@ public class Image {
 
     public void setData(byte[] data) {
         this.data = data;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     public LocalDateTime getDateAdded() {
@@ -77,6 +86,7 @@ public class Image {
         return MoreObjects.toStringHelper(this)
                 .add("id", id)
                 .add("uuid", uuid)
+                .add("description", description)
                 .add("data.length", data != null ? data.length : 0)
                 .add("dateAdded", dateAdded)
                 .add("dateModified", dateModified)
