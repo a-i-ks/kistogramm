@@ -13,6 +13,7 @@ public class Image {
     private UUID uuid;
     private byte[] data;
     private String description;
+    private String type;
     private LocalDateTime dateAdded;
     private LocalDateTime dateModified;
 
@@ -46,6 +47,14 @@ public class Image {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
     }
 
     public LocalDateTime getDateAdded() {
@@ -87,6 +96,7 @@ public class Image {
                 .add("id", id)
                 .add("uuid", uuid)
                 .add("description", description)
+                .add("type", type)
                 .add("data.length", data != null ? data.length : 0)
                 .add("dateAdded", dateAdded)
                 .add("dateModified", dateModified)

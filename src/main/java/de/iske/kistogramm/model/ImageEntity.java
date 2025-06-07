@@ -19,6 +19,9 @@ public class ImageEntity {
 
     private String description;
 
+    @Column(name = "type")
+    private String type;
+
     @Column(name = "data", nullable = false, columnDefinition = "BYTEA")
     private byte[] data;
 
@@ -55,6 +58,14 @@ public class ImageEntity {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
     }
 
     public void setUuid(UUID uuid) {
@@ -146,6 +157,7 @@ public class ImageEntity {
                 .add("id", id)
                 .add("uuid", uuid)
                 .add("description", description)
+                .add("type", type)
                 .add("belongsTo", resolveOwner())
                 .add("data.length", data != null ? data.length : 0)
                 .add("dateAdded", dateAdded)

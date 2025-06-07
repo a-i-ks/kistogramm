@@ -61,6 +61,7 @@ public class ImageController {
     public ResponseEntity<Image> uploadImage(@RequestParam("file") MultipartFile file) throws IOException {
         Image image = new Image();
         image.setData(file.getBytes());
+        image.setType(file.getContentType());
         image.setDateAdded(LocalDateTime.now());
         image.setDateModified(LocalDateTime.now());
         return ResponseEntity.ok(imageService.createImage(image));

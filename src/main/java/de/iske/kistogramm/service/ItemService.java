@@ -247,6 +247,7 @@ public class ItemService {
             try {
                 ImageEntity image = new ImageEntity();
                 image.setData(file.getBytes());
+                image.setType(file.getContentType());
                 image.setDateAdded(LocalDateTime.now());
                 image.setDateModified(LocalDateTime.now());
                 image.setItem(item);
