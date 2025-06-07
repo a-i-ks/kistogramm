@@ -58,7 +58,7 @@ public class ImportService {
     Map<UUID, StorageEntity> storages = importStorages(result.getStorages(), rooms, images);
     Map<UUID, CategoryEntity> categories = importCategories(result.getCategories());
     Map<UUID, TagEntity> tags = importTags(result.getTags());
-    importCategoryAttributeTemplates(result.getCategoryAttributeTemplates(), categories);
+    importCategoryAttributeTemplates(result.getCategoryAttributeTemplates(), categories, overwrite, failOnError, importResult);
     Map<UUID, ItemEntity> items = importItems(result.getItems(), categories, storages, tags, images);
     linkRelatedItems(result.getItems(), items);
 
@@ -203,22 +203,62 @@ public class ImportService {
   }
 
   private void importCategoryAttributeTemplates(List<ExportCategoryAttributeTemplate> templates,
-                                                Map<UUID, CategoryEntity> categories) {
+                                                Map<UUID, CategoryEntity> categories,
+                                                boolean overwrite,
+                                                boolean failOnError,
+                                                ImportResult importResult) {
     if (templates == null) {
       return;
+    }
+    if (importResult.getErrors() == null) {
+      importResult.setErrors(new ArrayList<>());
+    }
+    if (importResult.getWarnings() == null) {
+      importResult.setWarnings(new ArrayList<>());
     }
     for (ExportCategoryAttributeTemplate exp : templates) {
       CategoryEntity cat = categories.get(exp.getCategory());
       if (cat == null) {
+        String msg = "Unknown category for template " + exp.getAttributeName();
+        importResult.getErrors().add(msg);
+        importResult.setFailedTotalCount(importResult.getFailedTotalCount() + 1);
+        if (failOnError) {
+          throw new IllegalStateException(msg);
+        }
         continue;
       }
-      CategoryAttributeTemplateEntity entity = new CategoryAttributeTemplateEntity();
-      entity.setUuid(exp.getUuid());
-      entity.setCategory(cat);
-      entity.setAttributeName(exp.getAttributeName());
-      entity.setDateAdded(exp.getDateAdded() != null ? exp.getDateAdded() : LocalDateTime.now());
-      entity.setDateModified(exp.getDateModified() != null ? exp.getDateModified() : LocalDateTime.now());
-      categoryAttributeTemplateRepository.save(entity);
+
+      Optional<CategoryAttributeTemplateEntity> existing = Optional.empty();
+      if (exp.getUuid() != null) {
+        existing = categoryAttributeTemplateRepository.findByUuid(exp.getUuid());
+      }
+
+      if (existing.isPresent()) {
+        if (overwrite) {
+          CategoryAttributeTemplateEntity entity = existing.get();
+          entity.setCategory(cat);
+          entity.setAttributeName(exp.getAttributeName());
+          entity.setDateAdded(exp.getDateAdded() != null ? exp.getDateAdded() : LocalDateTime.now());
+          entity.setDateModified(exp.getDateModified() != null ? exp.getDateModified() : LocalDateTime.now());
+          categoryAttributeTemplateRepository.save(entity);
+          importResult.setUpdatedCategoryAttributeTemplateCount(importResult.getUpdatedCategoryAttributeTemplateCount() + 1);
+          importResult.setUpdatedTotalCount(importResult.getUpdatedTotalCount() + 1);
+        } else {
+          importResult.getWarnings().add("Template exists: " + exp.getUuid());
+          importResult.setSkippedCategoryAttributeTemplateCount(importResult.getSkippedCategoryAttributeTemplateCount() + 1);
+          importResult.setSkippedTotalCount(importResult.getSkippedTotalCount() + 1);
+        }
+      } else {
+        CategoryAttributeTemplateEntity entity = new CategoryAttributeTemplateEntity();
+        entity.setUuid(exp.getUuid());
+        entity.setCategory(cat);
+        entity.setAttributeName(exp.getAttributeName());
+        entity.setDateAdded(exp.getDateAdded() != null ? exp.getDateAdded() : LocalDateTime.now());
+        entity.setDateModified(exp.getDateModified() != null ? exp.getDateModified() : LocalDateTime.now());
+        categoryAttributeTemplateRepository.save(entity);
+        importResult.setImportedCategoryAttributeTemplateCount(importResult.getImportedCategoryAttributeTemplateCount() + 1);
+        importResult.setImportedTotalCount(importResult.getImportedTotalCount() + 1);
+      }
     }
   }
 

@@ -24,6 +24,10 @@ public class ImportResult {
   private int importedTagCount;
   private int updatedTagCount;
 
+  private int importedCategoryAttributeTemplateCount;
+  private int updatedCategoryAttributeTemplateCount;
+  private int skippedCategoryAttributeTemplateCount;
+
   private List<String> errors;
   private List<String> warnings;
 
@@ -161,6 +165,30 @@ public class ImportResult {
 
   public void setUpdatedTagCount(int updatedTagCount) {
     this.updatedTagCount = updatedTagCount;
+  }
+
+  public int getImportedCategoryAttributeTemplateCount() {
+    return importedCategoryAttributeTemplateCount;
+  }
+
+  public void setImportedCategoryAttributeTemplateCount(int importedCategoryAttributeTemplateCount) {
+    this.importedCategoryAttributeTemplateCount = importedCategoryAttributeTemplateCount;
+  }
+
+  public int getUpdatedCategoryAttributeTemplateCount() {
+    return updatedCategoryAttributeTemplateCount;
+  }
+
+  public void setUpdatedCategoryAttributeTemplateCount(int updatedCategoryAttributeTemplateCount) {
+    this.updatedCategoryAttributeTemplateCount = updatedCategoryAttributeTemplateCount;
+  }
+
+  public int getSkippedCategoryAttributeTemplateCount() {
+    return skippedCategoryAttributeTemplateCount;
+  }
+
+  public void setSkippedCategoryAttributeTemplateCount(int skippedCategoryAttributeTemplateCount) {
+    this.skippedCategoryAttributeTemplateCount = skippedCategoryAttributeTemplateCount;
   }
 
   public List<String> getErrors() {
