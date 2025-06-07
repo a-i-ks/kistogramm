@@ -19,6 +19,7 @@ public class CategoryEntity {
     private UUID uuid;
 
     private String name;
+    private String description;
 
     private LocalDateTime dateAdded;
     private LocalDateTime dateModified;
@@ -45,6 +46,14 @@ public class CategoryEntity {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     public LocalDateTime getDateAdded() {
@@ -88,6 +97,7 @@ public class CategoryEntity {
                 .add("id", id)
                 .add("uuid", uuid)
                 .add("name", name)
+                .add("description", description)
                 .add("dateAdded", dateAdded)
                 .add("dateModified", dateModified)
                 .toString();

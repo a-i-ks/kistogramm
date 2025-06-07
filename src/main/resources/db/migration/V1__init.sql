@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS categories (
     id SERIAL PRIMARY KEY,
     uuid UUID NOT NULL UNIQUE,
     name VARCHAR(255) NOT NULL,
+    description TEXT,
     date_added TIMESTAMP,
     date_modified TIMESTAMP
 );

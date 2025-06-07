@@ -7,6 +7,7 @@ public class ExportCategory {
 
     private UUID uuid;
     private String name;
+    private String description;
     private LocalDateTime dateAdded;
     private LocalDateTime dateModified;
 
@@ -24,6 +25,14 @@ public class ExportCategory {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     public LocalDateTime getDateAdded() {

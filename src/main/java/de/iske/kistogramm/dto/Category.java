@@ -11,6 +11,7 @@ public class Category {
     private Integer id;
     private UUID uuid;
     private String name;
+    private String description;
     private LocalDateTime dateAdded;
     private LocalDateTime dateModified;
 
@@ -32,6 +33,14 @@ public class Category {
 
     public String getName() {
         return name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     public void setName(String name) {
@@ -75,6 +84,7 @@ public class Category {
                 .add("id", id)
                 .add("uuid", uuid)
                 .add("name", name)
+                .add("description", description)
                 .add("dateAdded", dateAdded)
                 .add("dateModified", dateModified)
                 .toString();
