@@ -7,6 +7,7 @@ public class ExportImage {
 
     private UUID uuid;
     private String description;
+    private String type;
     private LocalDateTime dateAdded;
     private LocalDateTime dateModified;
 
@@ -24,6 +25,14 @@ public class ExportImage {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
     }
 
     public LocalDateTime getDateAdded() {

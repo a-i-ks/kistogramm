@@ -68,6 +68,7 @@ CREATE TABLE IF NOT EXISTS images (
     id SERIAL PRIMARY KEY,
     uuid UUID NOT NULL UNIQUE,
     description TEXT,
+    type VARCHAR(255),
     data BYTEA NOT NULL,
     date_added TIMESTAMP,
     date_modified TIMESTAMP,
