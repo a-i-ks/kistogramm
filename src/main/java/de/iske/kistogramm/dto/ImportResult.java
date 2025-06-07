@@ -23,6 +23,8 @@ public class ImportResult {
   private int updatedRoomCount;
   private int importedTagCount;
   private int updatedTagCount;
+  private int importedCategoryAttributeTemplateCount;
+  private int updatedCategoryAttributeTemplateCount;
 
   private List<String> errors;
   private List<String> warnings;
@@ -161,6 +163,22 @@ public class ImportResult {
 
   public void setUpdatedTagCount(int updatedTagCount) {
     this.updatedTagCount = updatedTagCount;
+  }
+
+  public int getImportedCategoryAttributeTemplateCount() {
+    return importedCategoryAttributeTemplateCount;
+  }
+
+  public void setImportedCategoryAttributeTemplateCount(int importedCategoryAttributeTemplateCount) {
+    this.importedCategoryAttributeTemplateCount = importedCategoryAttributeTemplateCount;
+  }
+
+  public int getUpdatedCategoryAttributeTemplateCount() {
+    return updatedCategoryAttributeTemplateCount;
+  }
+
+  public void setUpdatedCategoryAttributeTemplateCount(int updatedCategoryAttributeTemplateCount) {
+    this.updatedCategoryAttributeTemplateCount = updatedCategoryAttributeTemplateCount;
   }
 
   public List<String> getErrors() {
