@@ -55,7 +55,13 @@ public class ImportService {
     importResult.setWarnings(new ArrayList<>());
 
     Map<String, byte[]> files = extractFiles(file);
-    ExportResult result = parseExportResult(files.get("data.json"));
+    ExportResult result;
+    try {
+      result = parseExportResult(files.get("data.json"));
+    } catch (IllegalArgumentException e) {
+      importResult.getErrors().add(e.getMessage());
+      return importResult;
+    }
 
     try {
       Map<UUID, ImageEntity> images = importImages(result.getImages(), files, overwrite, failOnError, importResult);
@@ -63,7 +69,7 @@ public class ImportService {
       Map<UUID, StorageEntity> storages = importStorages(result.getStorages(), rooms, images, overwrite, failOnError, importResult);
       Map<UUID, CategoryEntity> categories = importCategories(result.getCategories(), overwrite, failOnError, importResult);
       Map<UUID, TagEntity> tags = importTags(result.getTags(), overwrite, failOnError, importResult);
-      importCategoryAttributeTemplates(result.getCategoryAttributeTemplates(), categories);
+      importCategoryAttributeTemplates(result.getCategoryAttributeTemplates(), categories, overwrite, failOnError, importResult);
       Map<UUID, ItemEntity> items = importItems(result.getItems(), categories, storages, tags, images, overwrite, failOnError, importResult);
       linkRelatedItems(result.getItems(), items);
     } catch (RuntimeException ex) {
@@ -199,6 +205,7 @@ public class ImportService {
                                                   boolean failOnError,
                                                   ImportResult result) {
     Map<UUID, StorageEntity> map = new HashMap<>();
+    Map<StorageEntity, UUID> pendingParents = new HashMap<>();
     if (exportStorages == null) {
       return map;
     }
@@ -230,7 +237,7 @@ public class ImportService {
           entity.setRoom(rooms.get(exp.getRoom()));
         }
         if (exp.getParentStorage() != null) {
-          entity.setParentStorage(storageRepository.findByUuid(exp.getParentStorage()).orElse(null));
+          pendingParents.put(entity, exp.getParentStorage());
         }
         StorageEntity saved = storageRepository.save(entity);
         map.put(exp.getUuid(), saved);
@@ -249,6 +256,21 @@ public class ImportService {
         if (failOnError) {
           throw new RuntimeException(e);
         }
+      }
+    }
+    // resolve parent references after all storages are saved
+    for (Map.Entry<StorageEntity, UUID> entry : pendingParents.entrySet()) {
+      StorageEntity child = entry.getKey();
+      UUID parentUuid = entry.getValue();
+      StorageEntity parent = map.get(parentUuid);
+      if (parent == null) {
+        parent = storageRepository.findByUuid(parentUuid).orElse(null);
+      }
+      if (parent != null) {
+        child.setParentStorage(parent);
+        storageRepository.save(child);
+      } else {
+        result.getWarnings().add("Parent storage " + parentUuid + " for storage " + child.getUuid() + " not found");
       }
     }
     return map;
@@ -341,22 +363,48 @@ public class ImportService {
   }
 
   private void importCategoryAttributeTemplates(List<ExportCategoryAttributeTemplate> templates,
-                                                Map<UUID, CategoryEntity> categories) {
+                                                Map<UUID, CategoryEntity> categories,
+                                                boolean overwrite,
+                                                boolean failOnError,
+                                                ImportResult result) {
     if (templates == null) {
       return;
     }
     for (ExportCategoryAttributeTemplate exp : templates) {
       CategoryEntity cat = categories.get(exp.getCategory());
       if (cat == null) {
+        result.getWarnings().add("Category for template " + exp.getUuid() + " not found");
         continue;
       }
-      CategoryAttributeTemplateEntity entity = new CategoryAttributeTemplateEntity();
-      entity.setUuid(exp.getUuid());
-      entity.setCategory(cat);
-      entity.setAttributeName(exp.getAttributeName());
-      entity.setDateAdded(exp.getDateAdded() != null ? exp.getDateAdded() : LocalDateTime.now());
-      entity.setDateModified(exp.getDateModified() != null ? exp.getDateModified() : LocalDateTime.now());
-      categoryAttributeTemplateRepository.save(entity);
+      try {
+        Optional<CategoryAttributeTemplateEntity> existing = categoryAttributeTemplateRepository.findByUuid(exp.getUuid());
+        CategoryAttributeTemplateEntity entity;
+        if (existing.isPresent()) {
+          if (!overwrite) {
+            result.setSkippedTotalCount(result.getSkippedTotalCount() + 1);
+            continue;
+          }
+          entity = existing.get();
+          result.setUpdatedCategoryAttributeTemplateCount(result.getUpdatedCategoryAttributeTemplateCount() + 1);
+          result.setUpdatedTotalCount(result.getUpdatedTotalCount() + 1);
+        } else {
+          entity = new CategoryAttributeTemplateEntity();
+          result.setImportedCategoryAttributeTemplateCount(result.getImportedCategoryAttributeTemplateCount() + 1);
+          result.setImportedTotalCount(result.getImportedTotalCount() + 1);
+        }
+        entity.setUuid(exp.getUuid());
+        entity.setCategory(cat);
+        entity.setAttributeName(exp.getAttributeName());
+        entity.setDateAdded(exp.getDateAdded() != null ? exp.getDateAdded() : LocalDateTime.now());
+        entity.setDateModified(exp.getDateModified() != null ? exp.getDateModified() : LocalDateTime.now());
+        categoryAttributeTemplateRepository.save(entity);
+      } catch (Exception e) {
+        result.getErrors().add("Failed to import category attribute template " + exp.getUuid());
+        result.setFailedTotalCount(result.getFailedTotalCount() + 1);
+        if (failOnError) {
+          throw new RuntimeException(e);
+        }
+      }
     }
   }
 

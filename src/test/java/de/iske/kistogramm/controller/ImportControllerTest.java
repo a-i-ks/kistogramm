@@ -102,8 +102,8 @@ class ImportControllerTest {
         ExportResult exportResult = objectMapper.readValue(extracted.get("data.json"), ExportResult.class);
 
         // delete all data
-        imageRepository.deleteAll();
         itemRepository.deleteAll();
+        imageRepository.deleteAll();
         storageRepository.deleteAll();
         roomRepository.deleteAll();
         categoryAttributeTemplateRepository.deleteAll();
@@ -166,5 +166,24 @@ class ImportControllerTest {
             }
         }
         return files;
+    }
+
+    @Test
+    void shouldReturnErrorWhenArchiveMissingDataJson() throws Exception {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (java.util.zip.ZipOutputStream zos = new java.util.zip.ZipOutputStream(baos)) {
+            ZipEntry entry = new ZipEntry("dummy.txt");
+            zos.putNextEntry(entry);
+            zos.write("test".getBytes());
+            zos.closeEntry();
+        }
+
+        MockMultipartFile file = new MockMultipartFile("file", "nodata.zip", MediaType.APPLICATION_OCTET_STREAM_VALUE, baos.toByteArray());
+        String resp = mockMvc.perform(multipart("/api/import").file(file))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        ImportResult result = objectMapper.readValue(resp, ImportResult.class);
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getErrors()).contains("data.json missing in archive");
     }
 }
