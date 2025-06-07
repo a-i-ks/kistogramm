@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import de.iske.kistogramm.dto.ImportResult;
 import de.iske.kistogramm.dto.export.ExportResult;
 import de.iske.kistogramm.repository.*;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -51,6 +52,34 @@ class ImportControllerTest {
     private ImageRepository imageRepository;
     @Autowired
     private CategoryAttributeTemplateRepository categoryAttributeTemplateRepository;
+
+    @BeforeEach
+    void setUp() {
+        // Unlink all images from items to avoid foreign key constraint issues
+        itemRepository.findAll().forEach(item -> {
+            item.setImages(null);
+            itemRepository.save(item);
+        });
+        // Unlink all images from storages to avoid foreign key constraint issues
+        storageRepository.findAll().forEach(storage -> {
+            storage.setImages(null);
+            storageRepository.save(storage);
+        });
+        // Unlink all images from rooms to avoid foreign key constraint issues
+        roomRepository.findAll().forEach(room -> {
+            room.setImage(null);
+            roomRepository.save(room);
+        });
+
+        // Clear all repositories before each test to ensure a clean state
+        imageRepository.deleteAll();
+        itemRepository.deleteAll();
+        storageRepository.deleteAll();
+        categoryAttributeTemplateRepository.deleteAll();
+        categoryRepository.deleteAll();
+        tagRepository.deleteAll();
+        roomRepository.deleteAll();
+    }
 
     @Test
     void shouldExportAndImportArchive() throws Exception {
@@ -103,12 +132,12 @@ class ImportControllerTest {
 
         // delete all data
         itemRepository.deleteAll();
-        imageRepository.deleteAll();
-        storageRepository.deleteAll();
         roomRepository.deleteAll();
+        storageRepository.deleteAll();
         categoryAttributeTemplateRepository.deleteAll();
         categoryRepository.deleteAll();
         tagRepository.deleteAll();
+        imageRepository.deleteAll();
 
         MockMultipartFile file = new MockMultipartFile("file", "export.zip", MediaType.APPLICATION_OCTET_STREAM_VALUE, zipBytes);
         String resp = mockMvc.perform(multipart("/api/import").file(file))
@@ -139,7 +168,7 @@ class ImportControllerTest {
         byte[] zipBytes = exportRes.getResponse().getContentAsByteArray();
         Map<String, byte[]> extracted = extractZipContents(zipBytes);
         ExportResult exportResult = objectMapper.readValue(extracted.get("data.json"), ExportResult.class);
-        String originalName = exportResult.getItems().get(0).getName();
+        String originalName = exportResult.getItems().getFirst().getName();
 
         var entity = itemRepository.findById(itemId).orElseThrow();
         entity.setName("Changed");
