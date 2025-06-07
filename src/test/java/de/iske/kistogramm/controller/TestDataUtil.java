@@ -90,7 +90,7 @@ public class TestDataUtil {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
-        var createdTag = objectMapper.readValue(response, Storage.class);
+        var createdTag = objectMapper.readValue(response, Tag.class);
 
         return createdTag.getId();
     }
