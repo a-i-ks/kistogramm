@@ -142,6 +142,10 @@ public class ImportService {
     if (exportStorages == null) {
       return map;
     }
+
+    // Temporarily store mapping of imported storage entities to their parent UUIDs
+    Map<StorageEntity, UUID> parentReferences = new HashMap<>();
+
     for (ExportStorage exp : exportStorages) {
       StorageEntity entity = storageRepository.findByUuid(exp.getUuid()).orElseGet(StorageEntity::new);
       entity.setUuid(exp.getUuid());
@@ -153,7 +157,7 @@ public class ImportService {
         entity.setRoom(rooms.get(exp.getRoom()));
       }
       if (exp.getParentStorage() != null) {
-        entity.setParentStorage(storageRepository.findByUuid(exp.getParentStorage()).orElse(null));
+        parentReferences.put(entity, exp.getParentStorage());
       }
       StorageEntity saved = storageRepository.save(entity);
       map.put(exp.getUuid(), saved);
@@ -167,6 +171,19 @@ public class ImportService {
         }
       }
     }
+
+    // After all storages are imported, set up the parent relationships
+    for (Map.Entry<StorageEntity, UUID> entry : parentReferences.entrySet()) {
+      StorageEntity child = entry.getKey();
+      UUID parentUuid = entry.getValue();
+      StorageEntity parent = map.get(parentUuid);
+      if (parent == null) {
+        parent = storageRepository.findByUuid(parentUuid).orElse(null);
+      }
+      child.setParentStorage(parent);
+      storageRepository.save(child);
+    }
+
     return map;
   }
 
