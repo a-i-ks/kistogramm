@@ -33,7 +33,6 @@ public class ImportService {
 
   private static final Logger LOG = LoggerFactory.getLogger(ImportService.class);
 
-
   public ImportService(
           CategoryRepository categoryRepository,
           CategoryAttributeTemplateRepository categoryAttributeTemplateRepository,
@@ -66,7 +65,11 @@ public class ImportService {
 
     try {
 
-      checkForExistingCategoryNames(dataToImport.getCategories(), dataToImport.getItems(), importResult);
+      checkForExistingCategoryNames(
+              dataToImport.getCategories(),
+              dataToImport.getItems(),
+              dataToImport.getCategoryAttributeTemplates(),
+              importResult);
 
       var images = importImages(dataToImport.getImages(), files, failOnError, importResult);
       var rooms = importRooms(dataToImport.getRooms(), images, failOnError, importResult);
@@ -97,6 +100,7 @@ public class ImportService {
    */
   private void checkForExistingCategoryNames(List<ExportCategory> categories,
                                              List<ExportItem> items,
+                                             List<ExportCategoryAttributeTemplate> templates,
                                              ImportResult importResult) {
     // get names of categories that should be imported
     for (var catToImport : categories) {
@@ -112,6 +116,11 @@ public class ImportService {
         items.forEach(item -> {
           if (item.getCategory() != null && item.getCategory().equals(catToImport.getUuid())) {
             item.setCategory(existingCat.get().getUuid());
+          }
+        });
+        templates.forEach(template -> {
+          if (template.getCategory().equals(catToImport.getUuid())) {
+            template.setCategory(existingCat.get().getUuid());
           }
         });
       }
@@ -353,11 +362,13 @@ public class ImportService {
                   categoryToImport.getUuid());
           if (result.isOverwriteMode()) {
             // Update the existing category with the new UUID and other details
-            LOG.info("Overwriting existing category with UUID '{}'", existing.get().getUuid());
+            LOG.info("Overwriting existing category ({})", existing.get().getUuid());
             entity = existing.get();
             entity.setUuid(categoryToImport.getUuid());
             entity.setDescription(categoryToImport.getDescription());
             importedCategories.put(categoryToImport.getUuid(), categoryRepository.save(entity));
+            result.setUpdatedCategoryCount(result.getUpdatedCategoryCount() + 1);
+            continue;
           } else {
             // If not in overwrite mode, skip this category
             // The items has been updated to reference the existing category UUID before
