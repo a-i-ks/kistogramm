@@ -18,7 +18,9 @@ public class CategoryEntity {
     @Column(name = "uuid", nullable = false, unique = true)
     private UUID uuid;
 
+    @Column(name = "name", nullable = false, unique = true)
     private String name;
+
     private String description;
 
     private LocalDateTime dateAdded;

@@ -209,7 +209,7 @@ class ImportControllerTest {
 
         MockMultipartFile file = new MockMultipartFile("file", "nodata.zip", MediaType.APPLICATION_OCTET_STREAM_VALUE, baos.toByteArray());
         String resp = mockMvc.perform(multipart("/api/import").file(file))
-                .andExpect(status().isOk())
+                .andExpect(status().isBadRequest())
                 .andReturn().getResponse().getContentAsString();
         ImportResult result = objectMapper.readValue(resp, ImportResult.class);
         assertThat(result.isSuccess()).isFalse();

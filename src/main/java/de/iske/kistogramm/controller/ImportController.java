@@ -1,9 +1,11 @@
 package de.iske.kistogramm.controller;
 
 import de.iske.kistogramm.dto.ImportResult;
+import de.iske.kistogramm.exception.ImportException;
 import de.iske.kistogramm.service.ImportService;
 import jakarta.transaction.Transactional;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -29,7 +31,17 @@ public class ImportController {
           @RequestParam(name = "failOnError", required = false, defaultValue = "true") boolean failOnError,
           @RequestParam("file") MultipartFile file) throws IOException {
 
-
-    return ResponseEntity.ok(importService.importArchive(file, overwrite, failOnError));
+    ImportResult importResult;
+    try {
+      importResult = importService.importArchive(file, overwrite, failOnError);
+      if (!importResult.isSuccess() && failOnError) {
+        return ResponseEntity.badRequest().body(importResult);
+      } else {
+        return ResponseEntity.ok(importResult);
+      }
+    } catch (ImportException e) { // if exception is thrown, rollback the transaction
+      TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+      return ResponseEntity.badRequest().body(e.getImportResult());
+    }
   }
 }

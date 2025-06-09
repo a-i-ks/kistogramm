@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import de.iske.kistogramm.dto.Item;
 import de.iske.kistogramm.dto.Room;
 import de.iske.kistogramm.dto.Storage;
+import de.iske.kistogramm.repository.CategoryAttributeTemplateRepository;
 import de.iske.kistogramm.repository.CategoryRepository;
 import de.iske.kistogramm.repository.ItemRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +36,10 @@ class ItemControllerTest {
 
     @Autowired
     private CategoryRepository categoryRepository;
+
+    @Autowired
+    private CategoryAttributeTemplateRepository templateRepository;
+
     @Autowired
     private ItemRepository itemRepository;
 
@@ -43,13 +48,44 @@ class ItemControllerTest {
     private Integer electronicCategoryId;
 
     @BeforeEach
-    void setup() {
-        clothingCategoryId = categoryRepository.findByName("Kleidung")
-                .orElseThrow().getId();
-        foodCategoryId = categoryRepository.findByName("Lebensmittel")
-                .orElseThrow().getId();
-        electronicCategoryId = categoryRepository.findByName("Elektronik")
-                .orElseThrow().getId();
+    void setup() throws Exception {
+        clothingCategoryId = createCategory("Kleidung");
+        createTemplateForCategory("Kleidung", List.of("Größe", "Zuletzt getragen"));
+        foodCategoryId = createCategory("Lebensmittel");
+        createTemplateForCategory("Lebensmittel", List.of("MHD"));
+        electronicCategoryId = createCategory("Elektronik");
+    }
+
+    private Integer createCategory(String name) throws Exception {
+        // check if category already exists
+        if (categoryRepository.findByName(name).isPresent()) {
+            return categoryRepository.findByName(name).get().getId();
+        }
+
+        Map<String, String> cat = Map.of("name", name);
+        String response = mockMvc.perform(post("/api/categories")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(cat)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        return objectMapper.readTree(response).get("id").asInt();
+    }
+
+    private void createTemplateForCategory(String categoryName, List<String> attributeNames) throws Exception {
+        Integer categoryId = categoryRepository.findByName(categoryName)
+                .orElseThrow(() -> new RuntimeException("Category not found: " + categoryName)).getId();
+        for (String attributeName : attributeNames) {
+            // check if template already exists
+            if (templateRepository.existsByCategoryIdAndAttributeName(categoryId, attributeName)) {
+                return; // Template already exists
+            }
+            Map<String, String> template = Map.of("categoryId", categoryId.toString(), "attributeName", attributeName);
+            mockMvc.perform(post("/api/categories/template")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(template)))
+                    .andExpect(status().isOk());
+        }
     }
 
     private Integer createTag(String name) throws Exception {
@@ -436,7 +472,7 @@ class ItemControllerTest {
                 .andReturn().getResponse().getContentAsString(), Item.class);
 
         assertThat(updatedItem.getImageIds()).isNotNull();
-        assertThat(updatedItem.getImageIds().size()).isEqualTo(1);
+        assertThat(updatedItem.getImageIds()).hasSize(1);
     }
 
     @Test
@@ -479,7 +515,7 @@ class ItemControllerTest {
         Item updatedItem = objectMapper.readValue(updatedResponse, Item.class);
 
         assertThat(updatedItem.getImageIds()).isNotNull();
-        assertThat(updatedItem.getImageIds().size()).isEqualTo(2);
+        assertThat(updatedItem.getImageIds()).hasSize(2);
     }
 
     @Test

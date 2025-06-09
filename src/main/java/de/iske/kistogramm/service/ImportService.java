@@ -3,8 +3,11 @@ package de.iske.kistogramm.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.iske.kistogramm.dto.ImportResult;
 import de.iske.kistogramm.dto.export.*;
+import de.iske.kistogramm.exception.ImportException;
 import de.iske.kistogramm.model.*;
 import de.iske.kistogramm.repository.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -28,6 +31,9 @@ public class ImportService {
 
   private final ObjectMapper objectMapper;
 
+  private static final Logger LOG = LoggerFactory.getLogger(ImportService.class);
+
+
   public ImportService(
           CategoryRepository categoryRepository,
           CategoryAttributeTemplateRepository categoryAttributeTemplateRepository,
@@ -48,31 +54,29 @@ public class ImportService {
   }
 
   public ImportResult importArchive(MultipartFile file, boolean overwrite, boolean failOnError) throws IOException {
-    ImportResult importResult = new ImportResult();
+    var importResult = new ImportResult();
+
     importResult.setOverwriteMode(overwrite);
     importResult.setSuccess(false);
     importResult.setErrors(new ArrayList<>());
     importResult.setWarnings(new ArrayList<>());
 
-    Map<String, byte[]> files = extractFiles(file);
-    ExportResult result;
-    try {
-      result = parseExportResult(files.get("data.json"));
-    } catch (IllegalArgumentException e) {
-      importResult.getErrors().add(e.getMessage());
-      return importResult;
-    }
+    var files = extractFiles(file);
+    var dataToImport = parseDataJson(files.get("data.json"), importResult);
 
     try {
-      Map<UUID, ImageEntity> images = importImages(result.getImages(), files, overwrite, failOnError, importResult);
-      Map<UUID, RoomEntity> rooms = importRooms(result.getRooms(), images, overwrite, failOnError, importResult);
-      Map<UUID, StorageEntity> storages = importStorages(result.getStorages(), rooms, images, overwrite, failOnError, importResult);
-      Map<UUID, CategoryEntity> categories = importCategories(result.getCategories(), overwrite, failOnError, importResult);
-      Map<UUID, TagEntity> tags = importTags(result.getTags(), overwrite, failOnError, importResult);
-      importCategoryAttributeTemplates(result.getCategoryAttributeTemplates(), categories, overwrite, failOnError, importResult);
-      Map<UUID, ItemEntity> items = importItems(result.getItems(), categories, storages, tags, images, overwrite, failOnError, importResult);
-      linkRelatedItems(result.getItems(), items);
-    } catch (RuntimeException ex) {
+
+      checkForExistingCategoryNames(dataToImport.getCategories(), dataToImport.getItems(), importResult);
+
+      var images = importImages(dataToImport.getImages(), files, failOnError, importResult);
+      var rooms = importRooms(dataToImport.getRooms(), images, failOnError, importResult);
+      var storages = importStorages(dataToImport.getStorages(), rooms, images, failOnError, importResult);
+      var categories = importCategories(dataToImport.getCategories(), failOnError, importResult);
+      var tags = importTags(dataToImport.getTags(), failOnError, importResult);
+      importCategoryAttributeTemplates(dataToImport.getCategoryAttributeTemplates(), categories, failOnError, importResult);
+      var items = importItems(dataToImport.getItems(), categories, storages, tags, images, failOnError, importResult);
+      linkRelatedItems(dataToImport.getItems(), items);
+    } catch (ImportException _) {
       if (failOnError) {
         importResult.setSuccess(false);
         return importResult;
@@ -81,6 +85,37 @@ public class ImportService {
 
     importResult.setSuccess(importResult.getErrors().isEmpty());
     return importResult;
+  }
+
+  /**
+   * Checks if categories already exist with their names in the database.
+   * If overwrite mode is enabled, it will update existing categories and also replace the existing UUID.
+   * if not in overwrite mode the existing uuid remains and the reference in the import data is replaced with the existing uuid.
+   *
+   * @param categories
+   * @param importResult
+   */
+  private void checkForExistingCategoryNames(List<ExportCategory> categories,
+                                             List<ExportItem> items,
+                                             ImportResult importResult) {
+    // get names of categories that should be imported
+    for (var catToImport : categories) {
+      var existingCat = categoryRepository.findByName(catToImport.getName());
+      // if they both have the same uuid, we can skip this check
+      if (existingCat.isPresent() && existingCat.get().getUuid().equals(catToImport.getUuid())) {
+        continue;
+      }
+      if (existingCat.isPresent() && !importResult.isOverwriteMode()) {
+        // Replace the uuid in the import data with the existing category uuid
+        LOG.warn("Category with name '{}' already exists with UUID '{}', replacing in import data with existing UUID",
+                catToImport.getName(), existingCat.get().getUuid());
+        items.forEach(item -> {
+          if (item.getCategory() != null && item.getCategory().equals(catToImport.getUuid())) {
+            item.setCategory(existingCat.get().getUuid());
+          }
+        });
+      }
+    }
   }
 
   private Map<String, byte[]> extractFiles(MultipartFile file) throws IOException {
@@ -96,30 +131,30 @@ public class ImportService {
     return files;
   }
 
-  private ExportResult parseExportResult(byte[] jsonBytes) throws IOException {
+  private ExportResult parseDataJson(byte[] jsonBytes, ImportResult importResult) throws IOException {
     if (jsonBytes == null) {
-      throw new IllegalArgumentException("data.json missing in archive");
+      importResult.getErrors().add("data.json missing in archive");
+      throw new ImportException(importResult);
     }
     return objectMapper.readValue(jsonBytes, ExportResult.class);
   }
 
-  private Map<UUID, ImageEntity> importImages(List<ExportImage> exportImages,
-                                             Map<String, byte[]> files,
-                                             boolean overwrite,
-                                             boolean failOnError,
-                                             ImportResult result) {
+  private Map<UUID, ImageEntity> importImages(List<ExportImage> imagesToImport,
+                                              Map<String, byte[]> files,
+                                              boolean failOnError,
+                                              ImportResult result) throws ImportException {
     Map<UUID, ImageEntity> map = new HashMap<>();
-    if (exportImages == null) {
+    if (imagesToImport == null) {
       return map;
     }
-    for (ExportImage exp : exportImages) {
+    for (var imageToImport : imagesToImport) {
       try {
-        Optional<ImageEntity> existing = imageRepository.findByUuid(exp.getUuid());
+        Optional<ImageEntity> existing = imageRepository.findByUuid(imageToImport.getUuid());
         ImageEntity entity;
         if (existing.isPresent()) {
-          if (!overwrite) {
+          if (!result.isOverwriteMode()) {
             result.setSkippedTotalCount(result.getSkippedTotalCount() + 1);
-            map.put(exp.getUuid(), existing.get());
+            map.put(imageToImport.getUuid(), existing.get());
             continue;
           }
           entity = existing.get();
@@ -129,42 +164,41 @@ public class ImportService {
           result.setImportedImageCount(result.getImportedImageCount() + 1);
           result.setImportedTotalCount(result.getImportedTotalCount() + 1);
         }
-        entity.setUuid(exp.getUuid());
-        entity.setDescription(exp.getDescription());
-        entity.setType(exp.getType());
-        entity.setDateAdded(exp.getDateAdded() != null ? exp.getDateAdded() : LocalDateTime.now());
-        entity.setDateModified(exp.getDateModified() != null ? exp.getDateModified() : LocalDateTime.now());
-        byte[] data = files.get("images/" + exp.getUuid());
+        entity.setUuid(imageToImport.getUuid());
+        entity.setDescription(imageToImport.getDescription());
+        entity.setType(imageToImport.getType());
+        entity.setDateAdded(imageToImport.getDateAdded() != null ? imageToImport.getDateAdded() : LocalDateTime.now());
+        entity.setDateModified(imageToImport.getDateModified() != null ? imageToImport.getDateModified() : LocalDateTime.now());
+        byte[] data = files.get("images/" + imageToImport.getUuid());
         entity.setData(data != null ? data : new byte[0]);
-        map.put(exp.getUuid(), imageRepository.save(entity));
+        map.put(imageToImport.getUuid(), imageRepository.save(entity));
       } catch (Exception e) {
-        result.getErrors().add("Failed to import image " + exp.getUuid());
+        result.getErrors().add("Failed to import image " + imageToImport.getUuid() + ": " + e.getMessage());
         result.setFailedTotalCount(result.getFailedTotalCount() + 1);
         if (failOnError) {
-          throw new RuntimeException(e);
+          throw new ImportException(result);
         }
       }
     }
     return map;
   }
 
-  private Map<UUID, RoomEntity> importRooms(List<ExportRoom> exportRooms,
+  private Map<UUID, RoomEntity> importRooms(List<ExportRoom> roomsToImport,
                                             Map<UUID, ImageEntity> images,
-                                            boolean overwrite,
                                             boolean failOnError,
-                                            ImportResult result) {
+                                            ImportResult result) throws ImportException {
     Map<UUID, RoomEntity> map = new HashMap<>();
-    if (exportRooms == null) {
+    if (roomsToImport == null) {
       return map;
     }
-    for (ExportRoom exp : exportRooms) {
+    for (var roomToImport : roomsToImport) {
       try {
-        Optional<RoomEntity> existing = roomRepository.findByUuid(exp.getUuid());
+        Optional<RoomEntity> existing = roomRepository.findByUuid(roomToImport.getUuid());
         RoomEntity entity;
         if (existing.isPresent()) {
-          if (!overwrite) {
+          if (!result.isOverwriteMode()) {
             result.setSkippedTotalCount(result.getSkippedTotalCount() + 1);
-            map.put(exp.getUuid(), existing.get());
+            map.put(roomToImport.getUuid(), existing.get());
             continue;
           }
           entity = existing.get();
@@ -175,49 +209,48 @@ public class ImportService {
           result.setImportedRoomCount(result.getImportedRoomCount() + 1);
           result.setImportedTotalCount(result.getImportedTotalCount() + 1);
         }
-        entity.setUuid(exp.getUuid());
-        entity.setName(exp.getName());
-        entity.setDescription(exp.getDescription());
-        entity.setDateAdded(exp.getDateAdded() != null ? exp.getDateAdded() : LocalDateTime.now());
-        entity.setDateModified(exp.getDateModified() != null ? exp.getDateModified() : LocalDateTime.now());
-        if (exp.getImage() != null) {
-          ImageEntity img = images.get(exp.getImage());
+        entity.setUuid(roomToImport.getUuid());
+        entity.setName(roomToImport.getName());
+        entity.setDescription(roomToImport.getDescription());
+        entity.setDateAdded(roomToImport.getDateAdded() != null ? roomToImport.getDateAdded() : LocalDateTime.now());
+        entity.setDateModified(roomToImport.getDateModified() != null ? roomToImport.getDateModified() : LocalDateTime.now());
+        if (roomToImport.getImage() != null) {
+          ImageEntity img = images.get(roomToImport.getImage());
           if (img != null) {
             entity.setImage(img);
             img.setRoom(entity);
           }
         }
-        map.put(exp.getUuid(), roomRepository.save(entity));
+        map.put(roomToImport.getUuid(), roomRepository.save(entity));
       } catch (Exception e) {
-        result.getErrors().add("Failed to import room " + exp.getUuid());
+        result.getErrors().add("Failed to import room " + roomToImport.getUuid() + ": " + e.getMessage());
         result.setFailedTotalCount(result.getFailedTotalCount() + 1);
         if (failOnError) {
-          throw new RuntimeException(e);
+          throw new ImportException(result);
         }
       }
     }
     return map;
   }
 
-  private Map<UUID, StorageEntity> importStorages(List<ExportStorage> exportStorages,
+  private Map<UUID, StorageEntity> importStorages(List<ExportStorage> storagesToImport,
                                                   Map<UUID, RoomEntity> rooms,
                                                   Map<UUID, ImageEntity> images,
-                                                  boolean overwrite,
                                                   boolean failOnError,
-                                                  ImportResult result) {
+                                                  ImportResult result) throws ImportException {
     Map<UUID, StorageEntity> map = new HashMap<>();
     Map<StorageEntity, UUID> pendingParents = new HashMap<>();
-    if (exportStorages == null) {
+    if (storagesToImport == null) {
       return map;
     }
-    for (ExportStorage exp : exportStorages) {
+    for (var storageToImport : storagesToImport) {
       try {
-        Optional<StorageEntity> existing = storageRepository.findByUuid(exp.getUuid());
+        Optional<StorageEntity> existing = storageRepository.findByUuid(storageToImport.getUuid());
         StorageEntity entity;
         if (existing.isPresent()) {
-          if (!overwrite) {
+          if (!result.isOverwriteMode()) {
             result.setSkippedTotalCount(result.getSkippedTotalCount() + 1);
-            map.put(exp.getUuid(), existing.get());
+            map.put(storageToImport.getUuid(), existing.get());
             continue;
           }
           entity = existing.get();
@@ -229,21 +262,21 @@ public class ImportService {
           result.setImportedTotalCount(result.getImportedTotalCount() + 1);
         }
 
-        entity.setUuid(exp.getUuid());
-        entity.setName(exp.getName());
-        entity.setDescription(exp.getDescription());
-        entity.setDateAdded(exp.getDateAdded() != null ? exp.getDateAdded() : LocalDateTime.now());
-        entity.setDateModified(exp.getDateModified() != null ? exp.getDateModified() : LocalDateTime.now());
-        if (exp.getRoom() != null) {
-          entity.setRoom(rooms.get(exp.getRoom()));
+        entity.setUuid(storageToImport.getUuid());
+        entity.setName(storageToImport.getName());
+        entity.setDescription(storageToImport.getDescription());
+        entity.setDateAdded(storageToImport.getDateAdded() != null ? storageToImport.getDateAdded() : LocalDateTime.now());
+        entity.setDateModified(storageToImport.getDateModified() != null ? storageToImport.getDateModified() : LocalDateTime.now());
+        if (storageToImport.getRoom() != null) {
+          entity.setRoom(rooms.get(storageToImport.getRoom()));
         }
-        if (exp.getParentStorage() != null) {
-          pendingParents.put(entity, exp.getParentStorage());
+        if (storageToImport.getParentStorage() != null) {
+          pendingParents.put(entity, storageToImport.getParentStorage());
         }
         StorageEntity saved = storageRepository.save(entity);
-        map.put(exp.getUuid(), saved);
-        if (exp.getImages() != null) {
-          for (UUID imgUuid : exp.getImages()) {
+        map.put(storageToImport.getUuid(), saved);
+        if (storageToImport.getImages() != null) {
+          for (UUID imgUuid : storageToImport.getImages()) {
             ImageEntity img = images.get(imgUuid);
             if (img != null) {
               img.setStorage(saved);
@@ -252,10 +285,10 @@ public class ImportService {
           }
         }
       } catch (Exception e) {
-        result.getErrors().add("Failed to import storage " + exp.getUuid());
+        result.getErrors().add("Failed to import storage " + storageToImport.getUuid());
         result.setFailedTotalCount(result.getFailedTotalCount() + 1);
         if (failOnError) {
-          throw new RuntimeException(e);
+          throw new ImportException(result);
         }
       }
     }
@@ -277,65 +310,103 @@ public class ImportService {
     return map;
   }
 
-  private Map<UUID, CategoryEntity> importCategories(List<ExportCategory> exportCategories,
-                                                     boolean overwrite,
+  private Map<UUID, CategoryEntity> importCategories(List<ExportCategory> categoriesToImport,
                                                      boolean failOnError,
-                                                     ImportResult result) {
-    Map<UUID, CategoryEntity> map = new HashMap<>();
-    if (exportCategories == null) {
-      return map;
+                                                     ImportResult result) throws ImportException {
+    Map<UUID, CategoryEntity> importedCategories = new HashMap<>();
+    if (categoriesToImport == null) {
+      return importedCategories; // return empty map if no categories to import
     }
-    for (ExportCategory exp : exportCategories) {
+    for (var categoryToImport : categoriesToImport) {
       try {
-        Optional<CategoryEntity> existing = categoryRepository.findByUuid(exp.getUuid());
         CategoryEntity entity;
-        if (existing.isPresent()) {
-          if (!overwrite) {
-            result.setSkippedTotalCount(result.getSkippedTotalCount() + 1);
-            map.put(exp.getUuid(), existing.get());
-            continue;
-          }
+        // Check if category already exists by UUID
+        Optional<CategoryEntity> existing = categoryRepository.findByUuid(categoryToImport.getUuid());
+        // if existing and overwrite mode, we will update it
+        if (existing.isPresent() // category with UUID exists
+                && (!existing.get().getName().equals(categoryToImport.getName()) // name has changed OR
+                || !Optional.ofNullable(existing.get().getDescription()).orElse("")
+                .equals(categoryToImport.getDescription())) // description has changed
+                && result.isOverwriteMode()) { // and we are in overwrite mode
+          LOG.info("Updating name and description for existing category with UUID '{}': {} -> {}",
+                  categoryToImport.getUuid(),
+                  existing.get().getName(),
+                  categoryToImport.getName());
           entity = existing.get();
+          // Update the name if it has changed
+          entity.setName(categoryToImport.getName());
+          entity.setDescription(categoryToImport.getDescription());
+
+          importedCategories.put(categoryToImport.getUuid(), categoryRepository.save(entity));
+
           result.setUpdatedCategoryCount(result.getUpdatedCategoryCount() + 1);
           result.setUpdatedTotalCount(result.getUpdatedTotalCount() + 1);
-        } else {
-          entity = new CategoryEntity();
-          result.setImportedCategoryCount(result.getImportedCategoryCount() + 1);
-          result.setImportedTotalCount(result.getImportedTotalCount() + 1);
+          continue;
         }
 
-        entity.setUuid(exp.getUuid());
-        entity.setName(exp.getName());
-        entity.setDateAdded(exp.getDateAdded() != null ? exp.getDateAdded() : LocalDateTime.now());
-        entity.setDateModified(exp.getDateModified() != null ? exp.getDateModified() : LocalDateTime.now());
-        map.put(exp.getUuid(), categoryRepository.save(entity));
+        // Check if category already exists by name
+        existing = categoryRepository.findByName(categoryToImport.getName());
+        if (existing.isPresent()) { // category with name exists
+          LOG.warn("Category with name '{}' already exists with UUID '{}', but trying to import with UUID '{}'",
+                  categoryToImport.getName(),
+                  existing.get().getUuid(),
+                  categoryToImport.getUuid());
+          if (result.isOverwriteMode()) {
+            // Update the existing category with the new UUID and other details
+            LOG.info("Overwriting existing category with UUID '{}'", existing.get().getUuid());
+            entity = existing.get();
+            entity.setUuid(categoryToImport.getUuid());
+            entity.setDescription(categoryToImport.getDescription());
+            importedCategories.put(categoryToImport.getUuid(), categoryRepository.save(entity));
+          } else {
+            // If not in overwrite mode, skip this category
+            // The items has been updated to reference the existing category UUID before
+            result.setSkippedTotalCount(result.getSkippedTotalCount() + 1);
+            importedCategories.put(existing.get().getUuid(), existing.get());
+            continue;
+          }
+        }
+
+        // If not found, create a new category
+        entity = new CategoryEntity();
+
+        entity.setUuid(categoryToImport.getUuid());
+        entity.setDescription(categoryToImport.getDescription());
+        entity.setName(categoryToImport.getName());
+        entity.setDateAdded(categoryToImport.getDateAdded() != null ? categoryToImport.getDateAdded() : LocalDateTime.now());
+        entity.setDateModified(categoryToImport.getDateModified() != null ? categoryToImport.getDateModified() : LocalDateTime.now());
+        importedCategories.put(categoryToImport.getUuid(), categoryRepository.save(entity));
+
+        result.setImportedCategoryCount(result.getImportedCategoryCount() + 1);
+        result.setImportedTotalCount(result.getImportedTotalCount() + 1);
+
+        importedCategories.put(categoryToImport.getUuid(), categoryRepository.save(entity));
       } catch (Exception e) {
-        result.getErrors().add("Failed to import category " + exp.getUuid());
+        result.getErrors().add("Failed to import category " + categoryToImport.getUuid() + ": " + e.getMessage());
         result.setFailedTotalCount(result.getFailedTotalCount() + 1);
         if (failOnError) {
-          throw new RuntimeException(e);
+          throw new ImportException(result);
         }
       }
     }
-    return map;
+    return importedCategories;
   }
 
-  private Map<UUID, TagEntity> importTags(List<ExportTag> exportTags,
-                                          boolean overwrite,
+  private Map<UUID, TagEntity> importTags(List<ExportTag> tagsToImport,
                                           boolean failOnError,
-                                          ImportResult result) {
+                                          ImportResult result) throws ImportException {
     Map<UUID, TagEntity> map = new HashMap<>();
-    if (exportTags == null) {
+    if (tagsToImport == null) {
       return map;
     }
-    for (ExportTag exp : exportTags) {
+    for (var tagToImport : tagsToImport) {
       try {
-        Optional<TagEntity> existing = tagRepository.findByUuid(exp.getUuid());
+        Optional<TagEntity> existing = tagRepository.findByUuid(tagToImport.getUuid());
         TagEntity entity;
         if (existing.isPresent()) {
-          if (!overwrite) {
+          if (!result.isOverwriteMode()) {
             result.setSkippedTotalCount(result.getSkippedTotalCount() + 1);
-            map.put(exp.getUuid(), existing.get());
+            map.put(tagToImport.getUuid(), existing.get());
             continue;
           }
           entity = existing.get();
@@ -347,41 +418,40 @@ public class ImportService {
           result.setImportedTotalCount(result.getImportedTotalCount() + 1);
         }
 
-        entity.setUuid(exp.getUuid());
-        entity.setName(exp.getName());
-        entity.setDateAdded(exp.getDateAdded() != null ? exp.getDateAdded() : LocalDateTime.now());
-        entity.setDateModified(exp.getDateModified() != null ? exp.getDateModified() : LocalDateTime.now());
-        map.put(exp.getUuid(), tagRepository.save(entity));
+        entity.setUuid(tagToImport.getUuid());
+        entity.setName(tagToImport.getName());
+        entity.setDateAdded(tagToImport.getDateAdded() != null ? tagToImport.getDateAdded() : LocalDateTime.now());
+        entity.setDateModified(tagToImport.getDateModified() != null ? tagToImport.getDateModified() : LocalDateTime.now());
+        map.put(tagToImport.getUuid(), tagRepository.save(entity));
       } catch (Exception e) {
-        result.getErrors().add("Failed to import tag " + exp.getUuid());
+        result.getErrors().add("Failed to import tag " + tagToImport.getUuid() + ": " + e.getMessage());
         result.setFailedTotalCount(result.getFailedTotalCount() + 1);
         if (failOnError) {
-          throw new RuntimeException(e);
+          throw new ImportException(result);
         }
       }
     }
     return map;
   }
 
-  private void importCategoryAttributeTemplates(List<ExportCategoryAttributeTemplate> templates,
+  private void importCategoryAttributeTemplates(List<ExportCategoryAttributeTemplate> templatesToImport,
                                                 Map<UUID, CategoryEntity> categories,
-                                                boolean overwrite,
                                                 boolean failOnError,
-                                                ImportResult result) {
-    if (templates == null) {
+                                                ImportResult result) throws ImportException {
+    if (templatesToImport == null) {
       return;
     }
-    for (ExportCategoryAttributeTemplate exp : templates) {
-      CategoryEntity cat = categories.get(exp.getCategory());
+    for (var templateToImport : templatesToImport) {
+      CategoryEntity cat = categories.get(templateToImport.getCategory());
       if (cat == null) {
-        result.getWarnings().add("Category for template " + exp.getUuid() + " not found");
+        result.getWarnings().add("Category for template " + templateToImport.getUuid() + " not found");
         continue;
       }
       try {
-        Optional<CategoryAttributeTemplateEntity> existing = categoryAttributeTemplateRepository.findByUuid(exp.getUuid());
+        Optional<CategoryAttributeTemplateEntity> existing = categoryAttributeTemplateRepository.findByUuid(templateToImport.getUuid());
         CategoryAttributeTemplateEntity entity;
         if (existing.isPresent()) {
-          if (!overwrite) {
+          if (!result.isOverwriteMode()) {
             result.setSkippedTotalCount(result.getSkippedTotalCount() + 1);
             continue;
           }
@@ -393,42 +463,41 @@ public class ImportService {
           result.setImportedCategoryAttributeTemplateCount(result.getImportedCategoryAttributeTemplateCount() + 1);
           result.setImportedTotalCount(result.getImportedTotalCount() + 1);
         }
-        entity.setUuid(exp.getUuid());
+        entity.setUuid(templateToImport.getUuid());
         entity.setCategory(cat);
-        entity.setAttributeName(exp.getAttributeName());
-        entity.setDateAdded(exp.getDateAdded() != null ? exp.getDateAdded() : LocalDateTime.now());
-        entity.setDateModified(exp.getDateModified() != null ? exp.getDateModified() : LocalDateTime.now());
+        entity.setAttributeName(templateToImport.getAttributeName());
+        entity.setDateAdded(templateToImport.getDateAdded() != null ? templateToImport.getDateAdded() : LocalDateTime.now());
+        entity.setDateModified(templateToImport.getDateModified() != null ? templateToImport.getDateModified() : LocalDateTime.now());
         categoryAttributeTemplateRepository.save(entity);
       } catch (Exception e) {
-        result.getErrors().add("Failed to import category attribute template " + exp.getUuid());
+        result.getErrors().add("Failed to import category attribute template " + templateToImport.getUuid() + ": " + e.getMessage());
         result.setFailedTotalCount(result.getFailedTotalCount() + 1);
         if (failOnError) {
-          throw new RuntimeException(e);
+          throw new ImportException(result);
         }
       }
     }
   }
 
-  private Map<UUID, ItemEntity> importItems(List<ExportItem> exportItems,
+  private Map<UUID, ItemEntity> importItems(List<ExportItem> itemsToImport,
                                             Map<UUID, CategoryEntity> categories,
                                             Map<UUID, StorageEntity> storages,
                                             Map<UUID, TagEntity> tags,
                                             Map<UUID, ImageEntity> images,
-                                            boolean overwrite,
                                             boolean failOnError,
-                                            ImportResult result) {
+                                            ImportResult result) throws ImportException {
     Map<UUID, ItemEntity> map = new HashMap<>();
-    if (exportItems == null) {
+    if (itemsToImport == null) {
       return map;
     }
-    for (ExportItem exp : exportItems) {
+    for (var itemToImport : itemsToImport) {
       try {
-        Optional<ItemEntity> existing = itemRepository.findByUuid(exp.getUuid());
+        Optional<ItemEntity> existing = itemRepository.findByUuid(itemToImport.getUuid());
         ItemEntity entity;
         if (existing.isPresent()) {
-          if (!overwrite) {
+          if (!result.isOverwriteMode()) {
             result.setSkippedTotalCount(result.getSkippedTotalCount() + 1);
-            map.put(exp.getUuid(), existing.get());
+            map.put(itemToImport.getUuid(), existing.get());
             continue;
           }
           entity = existing.get();
@@ -440,23 +509,23 @@ public class ImportService {
           result.setImportedTotalCount(result.getImportedTotalCount() + 1);
         }
 
-        entity.setUuid(exp.getUuid());
-        entity.setName(exp.getName());
-        entity.setDescription(exp.getDescription());
-        entity.setPurchaseDate(exp.getPurchaseDate());
-        entity.setPurchasePrice(exp.getPurchasePrice());
-        entity.setQuantity(exp.getQuantity());
-        entity.setDateAdded(exp.getDateAdded() != null ? exp.getDateAdded() : LocalDateTime.now());
-        entity.setDateModified(exp.getDateModified() != null ? exp.getDateModified() : LocalDateTime.now());
-        if (exp.getCategory() != null) {
-          entity.setCategory(categories.get(exp.getCategory()));
+        entity.setUuid(itemToImport.getUuid());
+        entity.setName(itemToImport.getName());
+        entity.setDescription(itemToImport.getDescription());
+        entity.setPurchaseDate(itemToImport.getPurchaseDate());
+        entity.setPurchasePrice(itemToImport.getPurchasePrice());
+        entity.setQuantity(itemToImport.getQuantity());
+        entity.setDateAdded(itemToImport.getDateAdded() != null ? itemToImport.getDateAdded() : LocalDateTime.now());
+        entity.setDateModified(itemToImport.getDateModified() != null ? itemToImport.getDateModified() : LocalDateTime.now());
+        if (itemToImport.getCategory() != null) {
+          entity.setCategory(categories.get(itemToImport.getCategory()));
         }
-        if (exp.getStorage() != null) {
-          entity.setStorage(storages.get(exp.getStorage()));
+        if (itemToImport.getStorage() != null) {
+          entity.setStorage(storages.get(itemToImport.getStorage()));
         }
-        if (exp.getTags() != null) {
+        if (itemToImport.getTags() != null) {
           Set<TagEntity> tagSet = new HashSet<>();
-          for (UUID uuid : exp.getTags()) {
+          for (UUID uuid : itemToImport.getTags()) {
             TagEntity t = tags.get(uuid);
             if (t != null) {
               tagSet.add(t);
@@ -465,9 +534,9 @@ public class ImportService {
           entity.setTags(tagSet);
         }
         ItemEntity saved = itemRepository.save(entity);
-        map.put(exp.getUuid(), saved);
-        if (exp.getImages() != null) {
-          for (UUID imgUuid : exp.getImages()) {
+        map.put(itemToImport.getUuid(), saved);
+        if (itemToImport.getImages() != null) {
+          for (UUID imgUuid : itemToImport.getImages()) {
             ImageEntity img = images.get(imgUuid);
             if (img != null) {
               img.setItem(saved);
@@ -476,31 +545,31 @@ public class ImportService {
           }
         }
       } catch (Exception e) {
-        result.getErrors().add("Failed to import item " + exp.getUuid());
+        result.getErrors().add("Failed to import item " + itemToImport.getUuid() + ": " + e.getMessage());
         result.setFailedTotalCount(result.getFailedTotalCount() + 1);
         if (failOnError) {
-          throw new RuntimeException(e);
+          throw new ImportException(result);
         }
       }
     }
     return map;
   }
 
-  private void linkRelatedItems(List<ExportItem> exportItems, Map<UUID, ItemEntity> items) {
-    if (exportItems == null) {
+  private void linkRelatedItems(List<ExportItem> items, Map<UUID, ItemEntity> itemToUuid) {
+    if (items == null) {
       return;
     }
-    for (ExportItem exp : exportItems) {
+    for (ExportItem exp : items) {
       if (exp.getRelatedItems() == null) {
         continue;
       }
-      ItemEntity entity = items.get(exp.getUuid());
+      ItemEntity entity = itemToUuid.get(exp.getUuid());
       if (entity == null) {
         continue;
       }
       Set<ItemEntity> related = new HashSet<>();
       for (UUID uuid : exp.getRelatedItems()) {
-        ItemEntity rel = items.get(uuid);
+        ItemEntity rel = itemToUuid.get(uuid);
         if (rel != null) {
           related.add(rel);
         }

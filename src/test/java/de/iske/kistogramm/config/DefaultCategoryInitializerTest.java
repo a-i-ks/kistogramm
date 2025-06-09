@@ -42,4 +42,16 @@ class DefaultCategoryInitializerTest {
         assertThat(categoryRepository.findByName("Möbelstück")).isPresent();
         assertThat(categoryRepository.findByName("Pflanze")).isPresent();
     }
+
+    @Test
+    void shouldNotCreateDuplicateCategories() {
+        // Testet, dass keine doppelten Kategorien erstellt werden
+        List<CategoryEntity> allCategories = categoryRepository.findAll();
+        long uniqueCategoryCount = allCategories.stream()
+                .map(CategoryEntity::getName)
+                .distinct()
+                .count();
+
+        assertThat(uniqueCategoryCount).isEqualTo(allCategories.size());
+    }
 }

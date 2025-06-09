@@ -32,23 +32,23 @@ public class CategoryInitializer {
     @PostConstruct
     public void initializeDefaults() {
         List<DefaultCategoryConfig.CategoryInit> defaults = config.getDefaultCategories();
-        for (DefaultCategoryConfig.CategoryInit entry : defaults) {
-            Optional<CategoryEntity> existing = categoryRepository.findByName(entry.getName());
+        for (var defaultCategoryToAdd : defaults) {
+            Optional<CategoryEntity> existing = categoryRepository.findByName(defaultCategoryToAdd.getName());
             CategoryEntity category;
 
             if (existing.isPresent()) {
                 category = existing.get();
             } else {
                 category = new CategoryEntity();
-                category.setName(entry.getName());
+                category.setName(defaultCategoryToAdd.getName());
                 category.setDateAdded(LocalDateTime.now());
                 category.setDateModified(LocalDateTime.now());
                 category = categoryRepository.save(category);
                 LOG.info("Added new default category: {}", category.getName());
             }
 
-            if (entry.getAttributes() != null) {
-                for (String attr : entry.getAttributes()) {
+            if (defaultCategoryToAdd.getAttributes() != null) {
+                for (String attr : defaultCategoryToAdd.getAttributes()) {
                     boolean exists = categoryAttributeTemplateRepository.existsByCategoryIdAndAttributeName(category.getId(), attr);
                     if (!exists) {
                         CategoryAttributeTemplateEntity template = new CategoryAttributeTemplateEntity();
