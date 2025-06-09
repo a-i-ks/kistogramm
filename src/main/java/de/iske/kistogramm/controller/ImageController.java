@@ -2,6 +2,9 @@ package de.iske.kistogramm.controller;
 
 import de.iske.kistogramm.dto.Image;
 import de.iske.kistogramm.service.ImageService;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -38,9 +41,12 @@ public class ImageController {
     @GetMapping("/{id}/data")
     @Transactional(readOnly = true)
     public ResponseEntity<byte[]> getImageData(@PathVariable Integer id) {
-        return imageService.getImageData(id)
-                .map(data -> ResponseEntity.ok().body(data))
-                .orElse(ResponseEntity.notFound().build());
+        return imageService.getImageById(id)
+                .map(image -> {
+                    HttpHeaders headers = new HttpHeaders();
+                    headers.setContentType(MediaType.parseMediaType(image.getType()));
+                    return new ResponseEntity<>(image.getData(), headers, HttpStatus.OK);
+                }).orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping

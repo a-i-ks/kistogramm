@@ -131,6 +131,7 @@ public class ImportService {
         }
         entity.setUuid(exp.getUuid());
         entity.setDescription(exp.getDescription());
+        entity.setType(exp.getType());
         entity.setDateAdded(exp.getDateAdded() != null ? exp.getDateAdded() : LocalDateTime.now());
         entity.setDateModified(exp.getDateModified() != null ? exp.getDateModified() : LocalDateTime.now());
         byte[] data = files.get("images/" + exp.getUuid());
