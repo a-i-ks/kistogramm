@@ -1,0 +1,31 @@
+name: Release Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version'
+        required: true
+        type: string
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 24
+        uses: actions/setup-java@v4
+        with:
+          java-version: '24'
+          distribution: 'temurin'
+
+      - name: Set version
+        run: mvn versions:set -DnewVersion=${{ github.event.inputs.version }}
+
+      - name: Build with Maven (prod profile)
+        run: mvn clean package -Pprod
+
+      - name: Build Docker image
+        run: docker build -t kistogramm:${{ github.event.inputs.version }} .
