@@ -63,7 +63,8 @@ public interface ItemMapper {
     @Mapping(target = "category", ignore = true)
     @Mapping(target = "storage", ignore = true)
     @Mapping(target = "tags", ignore = true)
-    @Mapping(target = "relatedItems", ignore = true) // Handhabung erfolgt im Service
+    // Related items are processed in the service layer
+    @Mapping(target = "relatedItems", ignore = true)
     @Mapping(target = "images", ignore = true)
     ItemEntity toEntity(Item dto);
 
