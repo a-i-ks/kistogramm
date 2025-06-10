@@ -79,7 +79,7 @@ public class ImportService {
       importCategoryAttributeTemplates(dataToImport.getCategoryAttributeTemplates(), categories, failOnError, importResult);
       var items = importItems(dataToImport.getItems(), categories, storages, tags, images, failOnError, importResult);
       linkRelatedItems(dataToImport.getItems(), items);
-    } catch (ImportException _) {
+    } catch (ImportException ignore) {
       if (failOnError) {
         importResult.setSuccess(false);
         return importResult;
