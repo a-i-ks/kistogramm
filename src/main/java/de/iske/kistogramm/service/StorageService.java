@@ -125,7 +125,7 @@ public class StorageService {
             entity.setParentStorage(null);
         }
 
-        // Optional: Tags neu zuweisen
+        // Optionally reassign tags
         if (updatedStorage.getTagIds() != null) {
             List<TagEntity> tags = tagRepository.findAllById(updatedStorage.getTagIds());
             entity.setTags(new HashSet<>(tags));

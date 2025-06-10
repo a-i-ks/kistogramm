@@ -126,7 +126,7 @@ public class ItemService {
         ItemEntity entity = itemRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Item not found: " + id));
 
-        // Update Basisattribute
+        // Update basic attributes
         entity.setName(updatedItem.getName());
         entity.setDescription(updatedItem.getDescription());
         entity.setPurchaseDate(updatedItem.getPurchaseDate());
@@ -134,12 +134,12 @@ public class ItemService {
         entity.setQuantity(updatedItem.getQuantity());
         entity.setDateModified(LocalDateTime.now());
 
-        // Custom Attribute aktualisieren (auch ohne Kategorie erlaubt)
+        // Update custom attributes (allowed even without a category)
         if (updatedItem.getCustomAttributes() != null) {
             entity.setCustomAttributes(updatedItem.getCustomAttributes());
         }
 
-        // Kategorie zuweisen oder ändern
+        // Assign or change the category
         if (updatedItem.getCategoryId() != null) {
             CategoryEntity newCategory = categoryRepository.findById(updatedItem.getCategoryId())
                     .orElseThrow(() -> new IllegalArgumentException("Category not found: " + updatedItem.getCategoryId()));
@@ -149,7 +149,7 @@ public class ItemService {
             if (changed) {
                 entity.setCategory(newCategory);
 
-                // Templates auslesen
+                // Read templates for the new category
                 List<CategoryAttributeTemplateEntity> templates = templateRepository.findByCategoryId(newCategory.getId());
 
                 Map<String, String> currentAttrs = new HashMap<>(entity.getCustomAttributes());
@@ -160,11 +160,11 @@ public class ItemService {
                 entity.setCustomAttributes(currentAttrs);
             }
         } else {
-            // Kategorie entfernen (falls gewünscht) – optional, je nach Bedarf
+            // Remove category if desired
             entity.setCategory(null);
         }
 
-        // Storage-Zuweisung aktualisieren (auch null erlaubt)
+        // Update storage assignment (null allowed)
         if (updatedItem.getStorageId() != null) {
             StorageEntity storage = storageRepository.findById(updatedItem.getStorageId())
                     .orElseThrow(() -> new IllegalArgumentException("Storage not found: " + updatedItem.getStorageId()));
@@ -173,7 +173,7 @@ public class ItemService {
             entity.setStorage(null);
         }
 
-        // Tags aktualisieren
+        // Update tags
         if (updatedItem.getTagIds() != null) {
             Set<TagEntity> newTags = new HashSet<>(tagRepository.findAllById(updatedItem.getTagIds()));
             entity.setTags(newTags);
@@ -269,17 +269,17 @@ public class ItemService {
         ImageEntity imageToRemove = imageRepository.findById(imageId)
                 .orElseThrow(() -> new IllegalArgumentException("Image not found: " + imageId));
 
-        // Prüfen, ob das Bild zu diesem Item gehört
+        // Check whether the image belongs to this item
         if (!item.getImages().contains(imageToRemove)) {
             throw new IllegalArgumentException("Image does not belong to this item");
         }
 
-        // Entfernen aus der Beziehung
+        // Remove from the item-image relationship
         item.getImages().remove(imageToRemove);
         item.setDateModified(LocalDateTime.now());
         itemRepository.save(item);
 
-        // Bild selbst löschen
+        // Delete the image entity
         imageRepository.delete(imageToRemove);
     }
 
@@ -302,11 +302,11 @@ public class ItemService {
         ItemEntity item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new IllegalArgumentException("Item not found: " + itemId));
 
-        // Alle Bilder des Items löschen
+        // Delete all images of the item
         for (ImageEntity image : item.getImages()) {
             imageRepository.delete(image);
         }
-        // Bilder aus der Item-Referenz entfernen
+        // Remove image references from the item
         item.getImages().clear();
         item.setDateModified(LocalDateTime.now());
         itemRepository.save(item);
