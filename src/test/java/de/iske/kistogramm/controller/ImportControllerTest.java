@@ -55,6 +55,10 @@ class ImportControllerTest {
 
     @BeforeEach
     void setUp() {
+        cleanup();
+    }
+
+    private void cleanup() {
         // Unlink all images from items to avoid foreign key constraint issues
         itemRepository.findAll().forEach(item -> {
             item.setImages(null);

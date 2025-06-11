@@ -3,6 +3,7 @@ package de.iske.kistogramm.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.iske.kistogramm.dto.*;
+import de.iske.kistogramm.repository.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,8 +36,59 @@ class SearchControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Autowired
+    private ItemRepository itemRepository;
+
+    @Autowired
+    private StorageRepository storageRepository;
+
+    @Autowired
+    private ImageRepository imageRepository;
+
+    @Autowired
+    private CategoryAttributeTemplateRepository categoryAttributeTemplateRepository;
+
+    @Autowired
+    private TagRepository tagRepository;
+
+    @Autowired
+    private RoomRepository roomRepository;
+
+    private void cleanup() {
+        // Cleanup before each test to ensure a clean state
+        // Unlink all images from items to avoid foreign key constraint issues
+        itemRepository.findAll().forEach(item -> {
+            item.setImages(null);
+            itemRepository.save(item);
+        });
+        // Unlink all images from storages to avoid foreign key constraint issues
+        storageRepository.findAll().forEach(storage -> {
+            storage.setImages(null);
+            storageRepository.save(storage);
+        });
+        // Unlink all images from rooms to avoid foreign key constraint issues
+        roomRepository.findAll().forEach(room -> {
+            room.setImage(null);
+            roomRepository.save(room);
+        });
+
+        // Clear all repositories before each test to ensure a clean state
+        imageRepository.deleteAll();
+        itemRepository.deleteAll();
+        storageRepository.deleteAll();
+        categoryAttributeTemplateRepository.deleteAll();
+        categoryRepository.deleteAll();
+        tagRepository.deleteAll();
+        roomRepository.deleteAll();
+    }
+
     @BeforeEach
     void setUp() throws Exception {
+        cleanup();
+
         // Step 1: Create category
         Category category = new Category();
         category.setName("SearchTestCategory");

@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.iske.kistogramm.dto.Item;
 import de.iske.kistogramm.dto.Tag;
+import de.iske.kistogramm.repository.*;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -13,7 +15,6 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -23,12 +24,61 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class TagControllerTest {
 
-
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Autowired
+    private ItemRepository itemRepository;
+
+    @Autowired
+    private StorageRepository storageRepository;
+
+    @Autowired
+    private ImageRepository imageRepository;
+
+    @Autowired
+    private CategoryAttributeTemplateRepository categoryAttributeTemplateRepository;
+
+    @Autowired
+    private TagRepository tagRepository;
+
+    @Autowired
+    private RoomRepository roomRepository;
+
+    @BeforeEach
+    void setUp() {
+        // Cleanup before each test to ensure a clean state
+        // Unlink all images from items to avoid foreign key constraint issues
+        itemRepository.findAll().forEach(item -> {
+            item.setImages(null);
+            itemRepository.save(item);
+        });
+        // Unlink all images from storages to avoid foreign key constraint issues
+        storageRepository.findAll().forEach(storage -> {
+            storage.setImages(null);
+            storageRepository.save(storage);
+        });
+        // Unlink all images from rooms to avoid foreign key constraint issues
+        roomRepository.findAll().forEach(room -> {
+            room.setImage(null);
+            roomRepository.save(room);
+        });
+
+        // Clear all repositories before each test to ensure a clean state
+        imageRepository.deleteAll();
+        itemRepository.deleteAll();
+        storageRepository.deleteAll();
+        categoryAttributeTemplateRepository.deleteAll();
+        categoryRepository.deleteAll();
+        tagRepository.deleteAll();
+        roomRepository.deleteAll();
+    }
 
     @Test
     void shouldCreateNewTagSuccessfully() throws Exception {
@@ -179,7 +229,7 @@ class TagControllerTest {
         // Step 3: Prüfung
         List<String> actualNames = resultTags.stream()
                 .map(Tag::getName)
-                .collect(Collectors.toList());
+                .toList();
 
         assertThat(actualNames).containsAll(tagNames);
     }

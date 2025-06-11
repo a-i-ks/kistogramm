@@ -6,8 +6,8 @@ import de.iske.kistogramm.dto.Image;
 import de.iske.kistogramm.dto.Item;
 import de.iske.kistogramm.dto.Room;
 import de.iske.kistogramm.dto.Storage;
-import de.iske.kistogramm.repository.CategoryRepository;
-import de.iske.kistogramm.repository.ItemRepository;
+import de.iske.kistogramm.repository.*;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -37,8 +37,53 @@ class RoomControllerTest {
 
     @Autowired
     private CategoryRepository categoryRepository;
+
     @Autowired
     private ItemRepository itemRepository;
+
+    @Autowired
+    private StorageRepository storageRepository;
+
+    @Autowired
+    private ImageRepository imageRepository;
+
+    @Autowired
+    private CategoryAttributeTemplateRepository categoryAttributeTemplateRepository;
+
+    @Autowired
+    private TagRepository tagRepository;
+
+    @Autowired
+    private RoomRepository roomRepository;
+
+    @BeforeEach
+    void setUp() {
+        // Cleanup before each test to ensure a clean state
+        // Unlink all images from items to avoid foreign key constraint issues
+        itemRepository.findAll().forEach(item -> {
+            item.setImages(null);
+            itemRepository.save(item);
+        });
+        // Unlink all images from storages to avoid foreign key constraint issues
+        storageRepository.findAll().forEach(storage -> {
+            storage.setImages(null);
+            storageRepository.save(storage);
+        });
+        // Unlink all images from rooms to avoid foreign key constraint issues
+        roomRepository.findAll().forEach(room -> {
+            room.setImage(null);
+            roomRepository.save(room);
+        });
+
+        // Clear all repositories before each test to ensure a clean state
+        imageRepository.deleteAll();
+        itemRepository.deleteAll();
+        storageRepository.deleteAll();
+        categoryAttributeTemplateRepository.deleteAll();
+        categoryRepository.deleteAll();
+        tagRepository.deleteAll();
+        roomRepository.deleteAll();
+    }
 
     @Test
     void shouldCreateRoomSuccessfully() throws Exception {
@@ -174,8 +219,7 @@ class RoomControllerTest {
 
         // Step 4: Validierung – nur noch der zweite Raum ist da
         List<Integer> roomIds = roomList.stream().map(Room::getId).toList();
-        assertThat(roomIds).contains(savedRoom2.getId());
-        assertThat(roomIds).doesNotContain(savedRoom1.getId());
+        assertThat(roomIds).contains(savedRoom2.getId()).doesNotContain(savedRoom1.getId());
     }
 
     @Test
@@ -232,8 +276,7 @@ class RoomControllerTest {
 
         List<Storage> storagesInRoomA = objectMapper.readValue(responseA, new TypeReference<>() {
         });
-        assertThat(storagesInRoomA).hasSize(2);
-        assertThat(storagesInRoomA).allMatch(s -> s.getRoomId().equals(savedRoomA.getId()));
+        assertThat(storagesInRoomA).hasSize(2).allMatch(s -> s.getRoomId().equals(savedRoomA.getId()));
 
         // Abfrage aller Storages in Room B
         String responseB = mockMvc.perform(get("/api/rooms/" + savedRoomB.getId() + "/storages"))
@@ -242,8 +285,7 @@ class RoomControllerTest {
 
         List<Storage> storagesInRoomB = objectMapper.readValue(responseB, new TypeReference<>() {
         });
-        assertThat(storagesInRoomB).hasSize(3);
-        assertThat(storagesInRoomB).allMatch(s -> s.getRoomId().equals(savedRoomB.getId()));
+        assertThat(storagesInRoomB).hasSize(3).allMatch(s -> s.getRoomId().equals(savedRoomB.getId()));
     }
 
     @Test
