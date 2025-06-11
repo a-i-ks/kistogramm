@@ -44,25 +44,25 @@ public interface ItemMapper {
     @Named("mapTagsToUuids")
     static List<UUID> mapTagsToUuids(Set<TagEntity> tags) {
         if (tags == null) return List.of();
-        return tags.stream().map(TagEntity::getUuid).collect(Collectors.toList());
+        return tags.stream().map(TagEntity::getUuid).toList();
     }
 
     @Named("mapRelatedEntitiesToUuids")
     static List<UUID> mapRelatedEntitiesToUuids(Set<ItemEntity> items) {
         if (items == null) return List.of();
-        return items.stream().map(ItemEntity::getUuid).collect(Collectors.toList());
+        return items.stream().map(ItemEntity::getUuid).toList();
     }
 
     @Named("mapImagesToUuids")
     static List<UUID> mapImagesToUuids(Set<ImageEntity> images) {
         if (images == null) return List.of();
-        return images.stream().map(ImageEntity::getUuid).collect(Collectors.toList());
+        return images.stream().map(ImageEntity::getUuid).toList();
     }
 
     @Named("mapReceiptsToUuids")
     static List<UUID> mapReceiptsToUuids(Set<ImageEntity> images) {
         if (images == null) return List.of();
-        return images.stream().map(ImageEntity::getUuid).collect(Collectors.toList());
+        return images.stream().map(ImageEntity::getUuid).toList();
     }
 
     @Mapping(source = "category.id", target = "categoryId")
@@ -87,5 +87,6 @@ public interface ItemMapper {
     @Mapping(target = "tags", qualifiedByName = "mapTagsToUuids")
     @Mapping(target = "relatedItems", qualifiedByName = "mapRelatedEntitiesToUuids")
     @Mapping(target = "images", qualifiedByName = "mapImagesToUuids")
+    @Mapping(target = "receipts", qualifiedByName = "mapReceiptsToUuids")
     ExportItem toExportItem(ItemEntity entity);
 }

@@ -155,7 +155,7 @@ public class ImageEntity {
         if (item != null) {
             return "Item[id=" + item.getId() + "]";
         } else if (receiptItem != null) {
-            return "ReceiptItem[id=" + receiptItem.getId() + "]";
+            return "Receipt of Item[id=" + receiptItem.getId() + "]";
         } else if (storage != null) {
             return "Storage[id=" + storage.getId() + "]";
         } else if (room != null) {

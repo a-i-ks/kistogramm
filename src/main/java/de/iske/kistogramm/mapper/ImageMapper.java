@@ -13,6 +13,7 @@ public interface ImageMapper {
     @Mapping(target = "item", ignore = true)
     @Mapping(target = "storage", ignore = true)
     @Mapping(target = "room", ignore = true)
+    @Mapping(target = "receiptItem", ignore = true)
     ImageEntity toEntity(Image dto);
 
     ExportImage toExportImage(ImageEntity imageEntity);
