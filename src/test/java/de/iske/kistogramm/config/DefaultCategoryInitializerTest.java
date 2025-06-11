@@ -52,6 +52,9 @@ class DefaultCategoryInitializerTest {
                 .distinct()
                 .count();
 
+        // print out the names of all categories for debugging
+        allCategories.forEach(category -> System.out.println("Category: " + category.getName()));
+
         assertThat(uniqueCategoryCount).isEqualTo(allCategories.size());
     }
 }
