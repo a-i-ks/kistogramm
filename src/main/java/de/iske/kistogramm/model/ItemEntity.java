@@ -48,6 +48,9 @@ public class ItemEntity {
     @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<ImageEntity> images = new HashSet<>();
 
+    @OneToMany(mappedBy = "receiptItem", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<ImageEntity> receipts = new HashSet<>();
+
     @ManyToMany
     @JoinTable(
             name = "item_related",
@@ -159,6 +162,14 @@ public class ItemEntity {
         this.images = images;
     }
 
+    public Set<ImageEntity> getReceipts() {
+        return receipts;
+    }
+
+    public void setReceipts(Set<ImageEntity> receipts) {
+        this.receipts = receipts;
+    }
+
     public Map<String, String> getCustomAttributes() {
         return customAttributes;
     }
@@ -227,6 +238,7 @@ public class ItemEntity {
                 .add("relatedItems", relatedItems.size())
                 .add("tags", tags.size())
                 .add("images", images.size())
+                .add("receipts", receipts.size())
                 .add("customAttributes", customAttributes)
                 .add("dateAdded", dateAdded)
                 .add("dateModified", dateModified);

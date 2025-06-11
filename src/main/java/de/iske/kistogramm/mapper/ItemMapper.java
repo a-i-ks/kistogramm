@@ -35,6 +35,12 @@ public interface ItemMapper {
         return images.stream().map(ImageEntity::getId).collect(Collectors.toSet());
     }
 
+    @Named("mapReceiptsToIds")
+    static Set<Integer> mapReceiptsToIds(Set<ImageEntity> images) {
+        if (images == null) return Set.of();
+        return images.stream().map(ImageEntity::getId).collect(Collectors.toSet());
+    }
+
     @Named("mapTagsToUuids")
     static List<UUID> mapTagsToUuids(Set<TagEntity> tags) {
         if (tags == null) return List.of();
@@ -53,11 +59,18 @@ public interface ItemMapper {
         return images.stream().map(ImageEntity::getUuid).collect(Collectors.toList());
     }
 
+    @Named("mapReceiptsToUuids")
+    static List<UUID> mapReceiptsToUuids(Set<ImageEntity> images) {
+        if (images == null) return List.of();
+        return images.stream().map(ImageEntity::getUuid).collect(Collectors.toList());
+    }
+
     @Mapping(source = "category.id", target = "categoryId")
     @Mapping(source = "storage.id", target = "storageId")
     @Mapping(target = "tagIds", source = "tags", qualifiedByName = "mapTagsToIds")
     @Mapping(target = "relatedItemIds", source = "relatedItems", qualifiedByName = "mapRelatedEntitiesToIds")
     @Mapping(target = "imageIds", source = "images", qualifiedByName = "mapImagesToIds")
+    @Mapping(target = "receiptIds", source = "receipts", qualifiedByName = "mapReceiptsToIds")
     Item toDto(ItemEntity entity);
 
     @Mapping(target = "category", ignore = true)
@@ -66,6 +79,7 @@ public interface ItemMapper {
     // Related items are processed in the service layer
     @Mapping(target = "relatedItems", ignore = true)
     @Mapping(target = "images", ignore = true)
+    @Mapping(target = "receipts", ignore = true)
     ItemEntity toEntity(Item dto);
 
     @Mapping(target = "category", source = "category.uuid")

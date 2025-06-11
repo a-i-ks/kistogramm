@@ -569,6 +569,67 @@ class ItemControllerTest {
     }
 
     @Test
+    void shouldUploadReceiptAndAssignToItem() throws Exception {
+        Item item = new Item();
+        item.setName("Printer");
+
+        Item savedItem = objectMapper.readValue(mockMvc.perform(post("/api/items")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(item)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Item.class);
+
+        MockMultipartFile receiptFile = new MockMultipartFile(
+                "files", "receipt.jpg", MediaType.IMAGE_JPEG_VALUE, "receipt".getBytes());
+
+        mockMvc.perform(multipart("/api/items/" + savedItem.getId() + "/receipts")
+                        .file(receiptFile))
+                .andExpect(status().isOk());
+
+        Item updatedItem = objectMapper.readValue(mockMvc.perform(get("/api/items/" + savedItem.getId()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Item.class);
+
+        assertThat(updatedItem.getReceiptIds()).hasSize(1);
+    }
+
+    @Test
+    void shouldDeleteReceiptFromItem() throws Exception {
+        Item item = new Item();
+        item.setName("Phone");
+
+        Item created = objectMapper.readValue(mockMvc.perform(post("/api/items")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(item)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Item.class);
+
+        MockMultipartFile r1 = new MockMultipartFile("files", "r1.jpg", MediaType.IMAGE_JPEG_VALUE, "r1".getBytes());
+        MockMultipartFile r2 = new MockMultipartFile("files", "r2.jpg", MediaType.IMAGE_JPEG_VALUE, "r2".getBytes());
+
+        mockMvc.perform(multipart("/api/items/" + created.getId() + "/receipts")
+                        .file(r1).file(r2))
+                .andExpect(status().isOk());
+
+        Item withReceipts = objectMapper.readValue(mockMvc.perform(get("/api/items/" + created.getId()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Item.class);
+
+        List<Integer> receiptIds = withReceipts.getReceiptIds().stream().toList();
+        Integer toDelete = receiptIds.get(0);
+        Integer toKeep = receiptIds.get(1);
+
+        mockMvc.perform(delete("/api/items/" + created.getId() + "/receipts/" + toDelete))
+                .andExpect(status().isOk());
+
+        Item afterDeletion = objectMapper.readValue(mockMvc.perform(get("/api/items/" + created.getId()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Item.class);
+
+        assertThat(afterDeletion.getReceiptIds()).containsExactly(toKeep);
+    }
+
+    @Test
     void shouldAssignStorageToItem() throws Exception {
         // Step 1: Optional Raum anlegen
         Room room = new Room();
