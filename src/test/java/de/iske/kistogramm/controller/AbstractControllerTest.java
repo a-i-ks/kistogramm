@@ -5,9 +5,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.DirtiesContext;
 
 @SpringBootTest(properties = "spring.profiles.active=test")
 @AutoConfigureMockMvc
+@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
 public abstract class AbstractControllerTest {
 
     @Autowired
@@ -27,16 +29,7 @@ public abstract class AbstractControllerTest {
 
     @BeforeEach
     void cleanDatabase() {
-        // unlink images to avoid foreign key constraints
-        itemRepository.findAll().forEach(item -> {
-            item.setImages(null);
-            item.setReceipts(null);
-            itemRepository.save(item);
-        });
-        storageRepository.findAll().forEach(storage -> {
-            storage.setImages(null);
-            storageRepository.save(storage);
-        });
+        // unlink room images to avoid foreign key constraints
         roomRepository.findAll().forEach(room -> {
             room.setImage(null);
             roomRepository.save(room);
