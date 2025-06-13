@@ -7,6 +7,7 @@ import de.iske.kistogramm.repository.CategoryRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.DirtiesContext;
 
 import java.util.List;
 import java.util.Optional;
@@ -14,6 +15,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(properties = "spring.profiles.active=test")
+@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
 class DefaultCategoryInitializerTest {
 
     @Autowired
@@ -21,7 +23,6 @@ class DefaultCategoryInitializerTest {
 
     @Autowired
     private CategoryAttributeTemplateRepository categoryAttributeTemplateRepository;
-
 
     @Test
     void shouldCreateDefaultCategoriesWithAttributes() {
