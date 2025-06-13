@@ -4,11 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.iske.kistogramm.dto.Item;
 import de.iske.kistogramm.dto.Tag;
-import de.iske.kistogramm.repository.*;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
+class TagControllerTest extends AbstractControllerTest {
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 

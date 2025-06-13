@@ -4,11 +4,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.iske.kistogramm.dto.Category;
 import de.iske.kistogramm.dto.Item;
-import de.iske.kistogramm.repository.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -18,9 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest(properties = "spring.profiles.active=test")
-@AutoConfigureMockMvc
-class CategoryControllerTest {
+class CategoryControllerTest extends AbstractControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -28,8 +23,6 @@ class CategoryControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @Autowired
-    private CategoryRepository categoryRepository;
 
     @Autowired
     private ItemRepository itemRepository;

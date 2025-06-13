@@ -3,11 +3,7 @@ package de.iske.kistogramm.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.iske.kistogramm.dto.*;
-import de.iske.kistogramm.repository.*;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+class SearchControllerTest extends AbstractControllerTest {
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;

@@ -5,11 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import de.iske.kistogramm.dto.Image;
 import de.iske.kistogramm.dto.Room;
 import de.iske.kistogramm.dto.Storage;
-import de.iske.kistogramm.repository.*;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
+class StorageControllerTest extends AbstractControllerTest {
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
