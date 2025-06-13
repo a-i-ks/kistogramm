@@ -27,16 +27,7 @@ public abstract class AbstractControllerTest {
 
     @BeforeEach
     void cleanDatabase() {
-        // unlink images to avoid foreign key constraints
-        itemRepository.findAll().forEach(item -> {
-            item.setImages(null);
-            item.setReceipts(null);
-            itemRepository.save(item);
-        });
-        storageRepository.findAll().forEach(storage -> {
-            storage.setImages(null);
-            storageRepository.save(storage);
-        });
+        // unlink room images to avoid foreign key constraints
         roomRepository.findAll().forEach(room -> {
             room.setImage(null);
             roomRepository.save(room);
