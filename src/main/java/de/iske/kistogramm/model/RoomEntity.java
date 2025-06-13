@@ -4,6 +4,7 @@ import com.google.common.base.MoreObjects;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -25,8 +26,8 @@ public class RoomEntity {
     private LocalDateTime dateAdded;
     private LocalDateTime dateModified;
 
-    @OneToMany(mappedBy = "room", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<StorageEntity> storages;
+    @OneToMany(mappedBy = "room", cascade = CascadeType.ALL)
+    private Set<StorageEntity> storages = new HashSet<>();
 
     @ManyToOne
     private ImageEntity image;

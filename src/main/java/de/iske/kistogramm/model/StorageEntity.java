@@ -38,10 +38,10 @@ public class StorageEntity {
             inverseJoinColumns = @JoinColumn(name = "tag_id"))
     private Set<TagEntity> tags = new HashSet<>();
 
-    @OneToMany(mappedBy = "storage", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "storage", cascade = CascadeType.ALL)
     private Set<ItemEntity> items = new HashSet<>();
 
-    @OneToMany(mappedBy = "storage", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "storage", cascade = CascadeType.ALL)
     private Set<ImageEntity> images = new HashSet<>();
 
     private LocalDateTime dateAdded;
@@ -100,7 +100,14 @@ public class StorageEntity {
     }
 
     public void setSubStorages(Set<StorageEntity> subStorages) {
-        this.subStorages = subStorages;
+        if (this.subStorages.equals(subStorages)) {
+            return;
+        }
+        this.subStorages.clear();
+        if (subStorages != null) {
+            this.subStorages.addAll(subStorages);
+        }
+        this.subStorages.forEach(s -> s.setParentStorage(this));
     }
 
     public Set<TagEntity> getTags() {
@@ -108,7 +115,13 @@ public class StorageEntity {
     }
 
     public void setTags(Set<TagEntity> tags) {
-        this.tags = tags;
+        if (this.tags.equals(tags)) {
+            return;
+        }
+        this.tags.clear();
+        if (tags != null) {
+            this.tags.addAll(tags);
+        }
     }
 
     public LocalDateTime getDateAdded() {
@@ -132,7 +145,14 @@ public class StorageEntity {
     }
 
     public void setItems(Set<ItemEntity> items) {
-        this.items = items;
+        if (this.items.equals(items)) {
+            return;
+        }
+        this.items.clear();
+        if (items != null) {
+            this.items.addAll(items);
+        }
+        this.items.forEach(i -> i.setStorage(this));
     }
 
     public Set<ImageEntity> getImages() {
@@ -140,7 +160,14 @@ public class StorageEntity {
     }
 
     public void setImages(Set<ImageEntity> images) {
-        this.images = images;
+        if (this.images.equals(images)) {
+            return;
+        }
+        this.images.clear();
+        if (images != null) {
+            this.images.addAll(images);
+        }
+        this.images.forEach(i -> i.setStorage(this));
     }
 
     @Override
