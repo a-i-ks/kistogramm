@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import de.iske.kistogramm.dto.Item;
 import de.iske.kistogramm.dto.Room;
 import de.iske.kistogramm.dto.Storage;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
@@ -24,22 +26,6 @@ class ItemControllerTest extends AbstractControllerTest {
 
     @Autowired
     private ObjectMapper objectMapper;
-
-
-            if (categoryAttributeTemplateRepository.existsByCategoryIdAndAttributeName(categoryId, attributeName)) {
-    private StorageRepository storageRepository;
-
-    @Autowired
-    private ImageRepository imageRepository;
-
-    @Autowired
-    private CategoryAttributeTemplateRepository categoryAttributeTemplateRepository;
-
-    @Autowired
-    private TagRepository tagRepository;
-
-    @Autowired
-    private RoomRepository roomRepository;
 
     @BeforeEach
     void setup() throws Exception {

@@ -3,8 +3,9 @@ package de.iske.kistogramm.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.iske.kistogramm.dto.*;
-class SearchControllerTest extends AbstractControllerTest {
-import org.springframework.boot.test.context.SpringBootTest;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -15,9 +16,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest(properties = "spring.profiles.active=test")
-@AutoConfigureMockMvc
-class SearchControllerTest {
+class SearchControllerTest extends AbstractControllerTest {
 
     private UUID itemUuid;
     private UUID storageUuid;
@@ -25,33 +24,11 @@ class SearchControllerTest {
     private UUID tagUuid;
     private UUID categoryUuid;
 
-
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
     private ObjectMapper objectMapper;
-
-    @Autowired
-    private CategoryRepository categoryRepository;
-
-    @Autowired
-    private ItemRepository itemRepository;
-
-    @Autowired
-    private StorageRepository storageRepository;
-
-    @Autowired
-    private ImageRepository imageRepository;
-
-    @Autowired
-    private CategoryAttributeTemplateRepository categoryAttributeTemplateRepository;
-
-    @Autowired
-    private TagRepository tagRepository;
-
-    @Autowired
-    private RoomRepository roomRepository;
 
     @BeforeEach
     void setUp() throws Exception {

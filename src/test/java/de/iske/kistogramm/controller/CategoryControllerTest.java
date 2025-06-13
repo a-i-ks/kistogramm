@@ -23,25 +23,6 @@ class CategoryControllerTest extends AbstractControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-
-    @Autowired
-    private ItemRepository itemRepository;
-
-    @Autowired
-    private StorageRepository storageRepository;
-
-    @Autowired
-    private ImageRepository imageRepository;
-
-    @Autowired
-    private CategoryAttributeTemplateRepository categoryAttributeTemplateRepository;
-
-    @Autowired
-    private TagRepository tagRepository;
-
-    @Autowired
-    private RoomRepository roomRepository;
-
     @Test
     void shouldCreateCategorySuccessfully() throws Exception {
         // Arrange

@@ -13,7 +13,7 @@ public abstract class AbstractControllerTest {
     @Autowired
     protected CategoryRepository categoryRepository;
     @Autowired
-    protected CategoryAttributeTemplateRepository categoryAttributeTemplateRepository;
+    protected CategoryAttributeTemplateRepository templateRepository;
     @Autowired
     protected ItemRepository itemRepository;
     @Autowired
@@ -45,7 +45,7 @@ public abstract class AbstractControllerTest {
         imageRepository.deleteAll();
         itemRepository.deleteAll();
         storageRepository.deleteAll();
-        categoryAttributeTemplateRepository.deleteAll();
+        templateRepository.deleteAll();
         categoryRepository.deleteAll();
         tagRepository.deleteAll();
         roomRepository.deleteAll();

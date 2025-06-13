@@ -5,7 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import de.iske.kistogramm.dto.Image;
 import de.iske.kistogramm.dto.Room;
 import de.iske.kistogramm.dto.Storage;
-class StorageControllerTest extends AbstractControllerTest {
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
@@ -19,36 +20,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest(properties = "spring.profiles.active=test")
-@AutoConfigureMockMvc
-class StorageControllerTest {
+class StorageControllerTest extends AbstractControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
     private ObjectMapper objectMapper;
-
-    @Autowired
-    private CategoryRepository categoryRepository;
-
-    @Autowired
-    private ItemRepository itemRepository;
-
-    @Autowired
-    private StorageRepository storageRepository;
-
-    @Autowired
-    private ImageRepository imageRepository;
-
-    @Autowired
-    private CategoryAttributeTemplateRepository categoryAttributeTemplateRepository;
-
-    @Autowired
-    private TagRepository tagRepository;
-
-    @Autowired
-    private RoomRepository roomRepository;
 
     @Test
     void shouldCreateStorageSuccessfully() throws Exception {
