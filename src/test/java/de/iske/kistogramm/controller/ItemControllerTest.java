@@ -4,14 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import de.iske.kistogramm.dto.Item;
 import de.iske.kistogramm.dto.Room;
 import de.iske.kistogramm.dto.Storage;
-import de.iske.kistogramm.repository.CategoryAttributeTemplateRepository;
-import de.iske.kistogramm.repository.CategoryRepository;
-import de.iske.kistogramm.repository.ItemRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
@@ -24,28 +19,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest(properties = "spring.profiles.active=test")
-@AutoConfigureMockMvc
-class ItemControllerTest {
+class ItemControllerTest extends AbstractControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
     private ObjectMapper objectMapper;
-
-    @Autowired
-    private CategoryRepository categoryRepository;
-
-    @Autowired
-    private CategoryAttributeTemplateRepository templateRepository;
-
-    @Autowired
-    private ItemRepository itemRepository;
-
-    private Integer clothingCategoryId;
-    private Integer foodCategoryId;
-    private Integer electronicCategoryId;
 
     @BeforeEach
     void setup() throws Exception {
@@ -55,6 +35,10 @@ class ItemControllerTest {
         createTemplateForCategory("Lebensmittel", List.of("MHD"));
         electronicCategoryId = createCategory("Elektronik");
     }
+
+    private Integer clothingCategoryId;
+    private Integer foodCategoryId;
+    private Integer electronicCategoryId;
 
     private Integer createCategory(String name) throws Exception {
         // check if category already exists
@@ -566,6 +550,67 @@ class ItemControllerTest {
         // Step 6: Verify the image was really deleted (404 or empty)
         mockMvc.perform(get("/api/images/" + imageToDelete))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldUploadReceiptAndAssignToItem() throws Exception {
+        Item item = new Item();
+        item.setName("Printer");
+
+        Item savedItem = objectMapper.readValue(mockMvc.perform(post("/api/items")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(item)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Item.class);
+
+        MockMultipartFile receiptFile = new MockMultipartFile(
+                "files", "receipt.jpg", MediaType.IMAGE_JPEG_VALUE, "receipt".getBytes());
+
+        mockMvc.perform(multipart("/api/items/" + savedItem.getId() + "/receipts")
+                        .file(receiptFile))
+                .andExpect(status().isOk());
+
+        Item updatedItem = objectMapper.readValue(mockMvc.perform(get("/api/items/" + savedItem.getId()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Item.class);
+
+        assertThat(updatedItem.getReceiptIds()).hasSize(1);
+    }
+
+    @Test
+    void shouldDeleteReceiptFromItem() throws Exception {
+        Item item = new Item();
+        item.setName("Phone");
+
+        Item created = objectMapper.readValue(mockMvc.perform(post("/api/items")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(item)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Item.class);
+
+        MockMultipartFile r1 = new MockMultipartFile("files", "r1.jpg", MediaType.IMAGE_JPEG_VALUE, "r1".getBytes());
+        MockMultipartFile r2 = new MockMultipartFile("files", "r2.jpg", MediaType.IMAGE_JPEG_VALUE, "r2".getBytes());
+
+        mockMvc.perform(multipart("/api/items/" + created.getId() + "/receipts")
+                        .file(r1).file(r2))
+                .andExpect(status().isOk());
+
+        Item withReceipts = objectMapper.readValue(mockMvc.perform(get("/api/items/" + created.getId()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Item.class);
+
+        List<Integer> receiptIds = withReceipts.getReceiptIds().stream().toList();
+        Integer toDelete = receiptIds.get(0);
+        Integer toKeep = receiptIds.get(1);
+
+        mockMvc.perform(delete("/api/items/" + created.getId() + "/receipts/" + toDelete))
+                .andExpect(status().isOk());
+
+        Item afterDeletion = objectMapper.readValue(mockMvc.perform(get("/api/items/" + created.getId()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), Item.class);
+
+        assertThat(afterDeletion.getReceiptIds()).containsExactly(toKeep);
     }
 
     @Test

@@ -6,12 +6,8 @@ import de.iske.kistogramm.dto.Image;
 import de.iske.kistogramm.dto.Item;
 import de.iske.kistogramm.dto.Room;
 import de.iske.kistogramm.dto.Storage;
-import de.iske.kistogramm.repository.CategoryRepository;
-import de.iske.kistogramm.repository.ItemRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
@@ -25,20 +21,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest(properties = "spring.profiles.active=test")
-@AutoConfigureMockMvc
-class RoomControllerTest {
+class RoomControllerTest extends AbstractControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
     private ObjectMapper objectMapper;
-
-    @Autowired
-    private CategoryRepository categoryRepository;
-    @Autowired
-    private ItemRepository itemRepository;
 
     @Test
     void shouldCreateRoomSuccessfully() throws Exception {
@@ -174,8 +163,7 @@ class RoomControllerTest {
 
         // Step 4: Validierung – nur noch der zweite Raum ist da
         List<Integer> roomIds = roomList.stream().map(Room::getId).toList();
-        assertThat(roomIds).contains(savedRoom2.getId());
-        assertThat(roomIds).doesNotContain(savedRoom1.getId());
+        assertThat(roomIds).contains(savedRoom2.getId()).doesNotContain(savedRoom1.getId());
     }
 
     @Test
@@ -232,8 +220,7 @@ class RoomControllerTest {
 
         List<Storage> storagesInRoomA = objectMapper.readValue(responseA, new TypeReference<>() {
         });
-        assertThat(storagesInRoomA).hasSize(2);
-        assertThat(storagesInRoomA).allMatch(s -> s.getRoomId().equals(savedRoomA.getId()));
+        assertThat(storagesInRoomA).hasSize(2).allMatch(s -> s.getRoomId().equals(savedRoomA.getId()));
 
         // Abfrage aller Storages in Room B
         String responseB = mockMvc.perform(get("/api/rooms/" + savedRoomB.getId() + "/storages"))
@@ -242,8 +229,7 @@ class RoomControllerTest {
 
         List<Storage> storagesInRoomB = objectMapper.readValue(responseB, new TypeReference<>() {
         });
-        assertThat(storagesInRoomB).hasSize(3);
-        assertThat(storagesInRoomB).allMatch(s -> s.getRoomId().equals(savedRoomB.getId()));
+        assertThat(storagesInRoomB).hasSize(3).allMatch(s -> s.getRoomId().equals(savedRoomB.getId()));
     }
 
     @Test

@@ -33,6 +33,10 @@ public class ImageEntity {
     private ItemEntity item;
 
     @ManyToOne
+    @JoinColumn(name = "receipt_item_id")
+    private ItemEntity receiptItem;
+
+    @ManyToOne
     @JoinColumn(name = "storage_id")
     private StorageEntity storage;
 
@@ -120,6 +124,14 @@ public class ImageEntity {
         this.room = room;
     }
 
+    public ItemEntity getReceiptItem() {
+        return receiptItem;
+    }
+
+    public void setReceiptItem(ItemEntity receiptItem) {
+        this.receiptItem = receiptItem;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;
@@ -142,6 +154,8 @@ public class ImageEntity {
     private String resolveOwner() {
         if (item != null) {
             return "Item[id=" + item.getId() + "]";
+        } else if (receiptItem != null) {
+            return "Receipt of Item[id=" + receiptItem.getId() + "]";
         } else if (storage != null) {
             return "Storage[id=" + storage.getId() + "]";
         } else if (room != null) {

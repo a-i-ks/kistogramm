@@ -23,6 +23,7 @@ public class Item {
     private Set<Integer> tagIds = new HashSet<>();
     private Set<Integer> relatedItemIds = new HashSet<>();
     private Set<Integer> imageIds = new HashSet<>();
+    private Set<Integer> receiptIds = new HashSet<>();
 
     private Map<String, String> customAttributes = new HashMap<>();
 
@@ -136,6 +137,14 @@ public class Item {
 
     public void setImageIds(Set<Integer> imageIds) {
         this.imageIds = imageIds;
+    }
+
+    public Set<Integer> getReceiptIds() {
+        return receiptIds;
+    }
+
+    public void setReceiptIds(Set<Integer> receiptIds) {
+        this.receiptIds = receiptIds;
     }
 
     public Map<String, String> getCustomAttributes() {

@@ -49,6 +49,7 @@ public class ItemService {
             Item dto = itemMapper.toDto(entity);
             dto.setTagIds(entity.getTags().stream().map(TagEntity::getId).collect(Collectors.toSet()));
             dto.setImageIds(entity.getImages().stream().map(ImageEntity::getId).collect(Collectors.toSet()));
+            dto.setReceiptIds(entity.getReceipts().stream().map(ImageEntity::getId).collect(Collectors.toSet()));
             dto.setRelatedItemIds(entity.getRelatedItems().stream().map(ItemEntity::getId).collect(Collectors.toSet()));
             return dto;
         }).toList();
@@ -59,6 +60,7 @@ public class ItemService {
             Item dto = itemMapper.toDto(entity);
             dto.setTagIds(entity.getTags().stream().map(TagEntity::getId).collect(Collectors.toSet()));
             dto.setImageIds(entity.getImages().stream().map(ImageEntity::getId).collect(Collectors.toSet()));
+            dto.setReceiptIds(entity.getReceipts().stream().map(ImageEntity::getId).collect(Collectors.toSet()));
             dto.setRelatedItemIds(entity.getRelatedItems().stream().map(ItemEntity::getId).collect(Collectors.toSet()));
             return dto;
         });
@@ -108,6 +110,12 @@ public class ItemService {
         if (dto.getImageIds() != null) {
             Set<ImageEntity> images = new HashSet<>(imageRepository.findAllById(dto.getImageIds()));
             entity.setImages(images);
+        }
+
+        // set receipts
+        if (dto.getReceiptIds() != null) {
+            Set<ImageEntity> receipts = new HashSet<>(imageRepository.findAllById(dto.getReceiptIds()));
+            entity.setReceipts(receipts);
         }
 
         // dynamic attributes
@@ -262,6 +270,29 @@ public class ItemService {
         return itemMapper.toDto(itemRepository.save(item));
     }
 
+    public Item uploadReceipts(Integer itemId, List<MultipartFile> files) {
+        ItemEntity item = itemRepository.findById(itemId)
+                .orElseThrow(() -> new IllegalArgumentException("Item not found: " + itemId));
+
+        for (MultipartFile file : files) {
+            try {
+                ImageEntity image = new ImageEntity();
+                image.setData(file.getBytes());
+                image.setType(file.getContentType());
+                image.setDateAdded(LocalDateTime.now());
+                image.setDateModified(LocalDateTime.now());
+                image.setReceiptItem(item);
+                imageRepository.save(image);
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to read uploaded file", e);
+            }
+        }
+
+        item.setDateModified(LocalDateTime.now());
+
+        return itemMapper.toDto(itemRepository.save(item));
+    }
+
     public void deleteImageFromItem(Integer itemId, Integer imageId) {
         ItemEntity item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new IllegalArgumentException("Item not found: " + itemId));
@@ -283,6 +314,24 @@ public class ItemService {
         imageRepository.delete(imageToRemove);
     }
 
+    public void deleteReceiptFromItem(Integer itemId, Integer receiptId) {
+        ItemEntity item = itemRepository.findById(itemId)
+                .orElseThrow(() -> new IllegalArgumentException("Item not found: " + itemId));
+
+        ImageEntity receiptToRemove = imageRepository.findById(receiptId)
+                .orElseThrow(() -> new IllegalArgumentException("Image not found: " + receiptId));
+
+        if (!item.getReceipts().contains(receiptToRemove)) {
+            throw new IllegalArgumentException("Receipt does not belong to this item");
+        }
+
+        item.getReceipts().remove(receiptToRemove);
+        item.setDateModified(LocalDateTime.now());
+        itemRepository.save(item);
+
+        imageRepository.delete(receiptToRemove);
+    }
+
     public List<Item> getItemsByTagId(Integer tagId) {
         return itemRepository.findByTagsId(tagId).stream()
                 .map(itemMapper::toDto)
@@ -298,6 +347,15 @@ public class ItemService {
                 .collect(Collectors.toList());
     }
 
+    public List<Image> getReceiptIdsByItemId(Integer id) {
+        ItemEntity item = itemRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Item not found: " + id));
+
+        return item.getReceipts().stream()
+                .map(imageMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
     public void deleteAllImagesFromItem(Integer itemId) {
         ItemEntity item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new IllegalArgumentException("Item not found: " + itemId));
@@ -308,6 +366,18 @@ public class ItemService {
         }
         // Remove image references from the item
         item.getImages().clear();
+        item.setDateModified(LocalDateTime.now());
+        itemRepository.save(item);
+    }
+
+    public void deleteAllReceiptsFromItem(Integer itemId) {
+        ItemEntity item = itemRepository.findById(itemId)
+                .orElseThrow(() -> new IllegalArgumentException("Item not found: " + itemId));
+
+        for (ImageEntity image : item.getReceipts()) {
+            imageRepository.delete(image);
+        }
+        item.getReceipts().clear();
         item.setDateModified(LocalDateTime.now());
         itemRepository.save(item);
     }

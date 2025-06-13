@@ -17,6 +17,7 @@ public class ExportItem {
     private LocalDateTime dateAdded;
     private LocalDateTime dateModified;
     private List<UUID> images;
+    private List<UUID> receipts;
     private UUID storage;
     private List<UUID> tags;
     private UUID category;
@@ -93,6 +94,14 @@ public class ExportItem {
 
     public void setImages(List<UUID> images) {
         this.images = images;
+    }
+
+    public List<UUID> getReceipts() {
+        return receipts;
+    }
+
+    public void setReceipts(List<UUID> receipts) {
+        this.receipts = receipts;
     }
 
     public UUID getStorage() {

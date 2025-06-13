@@ -7,7 +7,7 @@
 CREATE TABLE IF NOT EXISTS categories (
     id SERIAL PRIMARY KEY,
     uuid UUID NOT NULL UNIQUE,
-    name VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL UNIQUE,
     description TEXT,
     date_added TIMESTAMP,
     date_modified TIMESTAMP
@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS categories (
 CREATE TABLE IF NOT EXISTS rooms (
     id SERIAL PRIMARY KEY,
     uuid UUID NOT NULL UNIQUE,
-    name VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL UNIQUE,
     description TEXT,
     image_id INT,
     date_added TIMESTAMP,
@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS rooms (
 CREATE TABLE IF NOT EXISTS tags (
     id SERIAL PRIMARY KEY,
     uuid UUID NOT NULL UNIQUE,
-    name VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL UNIQUE,
     date_added TIMESTAMP,
     date_modified TIMESTAMP
 );
@@ -76,9 +76,11 @@ CREATE TABLE IF NOT EXISTS images (
     item_id INT,
     storage_id INT,
     room_id INT,
+    receipt_item_id INT,
     FOREIGN KEY (item_id) REFERENCES items(id),
     FOREIGN KEY (storage_id) REFERENCES storages(id),
-    FOREIGN KEY (room_id) REFERENCES rooms(id)
+    FOREIGN KEY (room_id) REFERENCES rooms(id),
+    FOREIGN KEY (receipt_item_id) REFERENCES items(id)
 );
 
 -- Item - Related Items

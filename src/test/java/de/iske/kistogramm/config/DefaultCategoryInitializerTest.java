@@ -22,6 +22,7 @@ class DefaultCategoryInitializerTest {
     @Autowired
     private CategoryAttributeTemplateRepository categoryAttributeTemplateRepository;
 
+
     @Test
     void shouldCreateDefaultCategoriesWithAttributes() {
         // Beispiel: Existenz von "Kleidung"

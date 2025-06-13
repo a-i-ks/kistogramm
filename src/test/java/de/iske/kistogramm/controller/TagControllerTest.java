@@ -6,23 +6,17 @@ import de.iske.kistogramm.dto.Item;
 import de.iske.kistogramm.dto.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest(properties = "spring.profiles.active=test")
-@AutoConfigureMockMvc
-class TagControllerTest {
-
+class TagControllerTest extends AbstractControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -179,7 +173,7 @@ class TagControllerTest {
         // Step 3: Prüfung
         List<String> actualNames = resultTags.stream()
                 .map(Tag::getName)
-                .collect(Collectors.toList());
+                .toList();
 
         assertThat(actualNames).containsAll(tagNames);
     }

@@ -78,11 +78,26 @@ public class ItemController {
         return ResponseEntity.ok(updatedItem);
     }
 
+    @PostMapping("/{id}/receipts")
+    @Transactional
+    public ResponseEntity<Item> uploadReceipts(@PathVariable Integer id,
+                                               @RequestParam("files") List<MultipartFile> files) {
+        var updatedItem = itemService.uploadReceipts(id, files);
+        return ResponseEntity.ok(updatedItem);
+    }
+
     @GetMapping("/{id}/images")
     @Transactional(readOnly = true)
     public ResponseEntity<List<Image>> getImagesByItemId(@PathVariable Integer id) {
         List<Image> imageIds = itemService.getImageIdsByItemId(id);
         return ResponseEntity.ok(imageIds);
+    }
+
+    @GetMapping("/{id}/receipts")
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<Image>> getReceiptsByItemId(@PathVariable Integer id) {
+        List<Image> receiptIds = itemService.getReceiptIdsByItemId(id);
+        return ResponseEntity.ok(receiptIds);
     }
 
     @DeleteMapping("/{itemId}/images")
@@ -92,10 +107,24 @@ public class ItemController {
         return ResponseEntity.ok().build();
     }
 
+    @DeleteMapping("/{itemId}/receipts")
+    @Transactional
+    public ResponseEntity<Void> deleteAllReceiptsFromItem(@PathVariable Integer itemId) {
+        itemService.deleteAllReceiptsFromItem(itemId);
+        return ResponseEntity.ok().build();
+    }
+
     @DeleteMapping("/{itemId}/images/{imageId}")
     @Transactional
     public ResponseEntity<Void> deleteItemImage(@PathVariable Integer itemId, @PathVariable Integer imageId) {
         itemService.deleteImageFromItem(itemId, imageId);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/{itemId}/receipts/{receiptId}")
+    @Transactional
+    public ResponseEntity<Void> deleteItemReceipt(@PathVariable Integer itemId, @PathVariable Integer receiptId) {
+        itemService.deleteReceiptFromItem(itemId, receiptId);
         return ResponseEntity.ok().build();
     }
 

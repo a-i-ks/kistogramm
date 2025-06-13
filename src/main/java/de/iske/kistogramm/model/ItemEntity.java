@@ -45,8 +45,11 @@ public class ItemEntity {
     )
     private Set<TagEntity> tags = new HashSet<>();
 
-    @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "item", cascade = CascadeType.ALL)
     private Set<ImageEntity> images = new HashSet<>();
+
+    @OneToMany(mappedBy = "receiptItem", cascade = CascadeType.ALL)
+    private Set<ImageEntity> receipts = new HashSet<>();
 
     @ManyToMany
     @JoinTable(
@@ -140,7 +143,14 @@ public class ItemEntity {
     }
 
     public void setRelatedItems(Set<ItemEntity> relatedItems) {
-        this.relatedItems = relatedItems;
+        if (this.relatedItems.equals(relatedItems)) {
+            return;
+        }
+        this.relatedItems.clear();
+        if (relatedItems != null) {
+            this.relatedItems.addAll(relatedItems);
+        }
+        this.relatedItems.forEach(i -> i.getRelatedItems().add(this)); // Ensure bidirectional relationship
     }
 
     public Set<TagEntity> getTags() {
@@ -148,7 +158,13 @@ public class ItemEntity {
     }
 
     public void setTags(Set<TagEntity> tags) {
-        this.tags = tags;
+        if (this.tags.equals(tags)) {
+            return;
+        }
+        this.tags.clear();
+        if (tags != null) {
+            this.tags.addAll(tags);
+        }
     }
 
     public Set<ImageEntity> getImages() {
@@ -156,7 +172,29 @@ public class ItemEntity {
     }
 
     public void setImages(Set<ImageEntity> images) {
-        this.images = images;
+        if (this.images.equals(images)) {
+            return;
+        }
+        this.images.clear();
+        if (images != null) {
+            this.images.addAll(images);
+        }
+        this.images.forEach(i -> i.setItem(this));
+    }
+
+    public Set<ImageEntity> getReceipts() {
+        return receipts;
+    }
+
+    public void setReceipts(Set<ImageEntity> receipts) {
+        if (this.receipts.equals(receipts)) {
+            return;
+        }
+        this.receipts.clear();
+        if (receipts != null) {
+            this.receipts.addAll(receipts);
+        }
+        this.receipts.forEach(i -> i.setItem(this));
     }
 
     public Map<String, String> getCustomAttributes() {
@@ -164,7 +202,13 @@ public class ItemEntity {
     }
 
     public void setCustomAttributes(Map<String, String> customAttributes) {
-        this.customAttributes = customAttributes;
+        if (this.customAttributes.equals(customAttributes)) {
+            return;
+        }
+        this.customAttributes.clear();
+        if (customAttributes != null) {
+            this.customAttributes.putAll(customAttributes);
+        }
     }
 
     public LocalDateTime getDateAdded() {
@@ -227,6 +271,7 @@ public class ItemEntity {
                 .add("relatedItems", relatedItems.size())
                 .add("tags", tags.size())
                 .add("images", images.size())
+                .add("receipts", receipts.size())
                 .add("customAttributes", customAttributes)
                 .add("dateAdded", dateAdded)
                 .add("dateModified", dateModified);
