@@ -58,32 +58,6 @@ class ItemControllerTest {
 
     @BeforeEach
     void setup() throws Exception {
-        // Cleanup before each test to ensure a clean state
-        // Unlink all images from items to avoid foreign key constraint issues
-        itemRepository.findAll().forEach(item -> {
-            item.setImages(null);
-            itemRepository.save(item);
-        });
-        // Unlink all images from storages to avoid foreign key constraint issues
-        storageRepository.findAll().forEach(storage -> {
-            storage.setImages(null);
-            storageRepository.save(storage);
-        });
-        // Unlink all images from rooms to avoid foreign key constraint issues
-        roomRepository.findAll().forEach(room -> {
-            room.setImage(null);
-            roomRepository.save(room);
-        });
-
-        // Clear all repositories before each test to ensure a clean state
-        imageRepository.deleteAll();
-        itemRepository.deleteAll();
-        storageRepository.deleteAll();
-        categoryAttributeTemplateRepository.deleteAll();
-        categoryRepository.deleteAll();
-        tagRepository.deleteAll();
-        roomRepository.deleteAll();
-
         clothingCategoryId = createCategory("Kleidung");
         createTemplateForCategory("Kleidung", List.of("Größe", "Zuletzt getragen"));
         foodCategoryId = createCategory("Lebensmittel");

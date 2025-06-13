@@ -7,7 +7,6 @@ import de.iske.kistogramm.dto.Item;
 import de.iske.kistogramm.dto.Room;
 import de.iske.kistogramm.dto.Storage;
 import de.iske.kistogramm.repository.*;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -55,35 +54,6 @@ class RoomControllerTest {
 
     @Autowired
     private RoomRepository roomRepository;
-
-    @BeforeEach
-    void setUp() {
-        // Cleanup before each test to ensure a clean state
-        // Unlink all images from items to avoid foreign key constraint issues
-        itemRepository.findAll().forEach(item -> {
-            item.setImages(null);
-            itemRepository.save(item);
-        });
-        // Unlink all images from storages to avoid foreign key constraint issues
-        storageRepository.findAll().forEach(storage -> {
-            storage.setImages(null);
-            storageRepository.save(storage);
-        });
-        // Unlink all images from rooms to avoid foreign key constraint issues
-        roomRepository.findAll().forEach(room -> {
-            room.setImage(null);
-            roomRepository.save(room);
-        });
-
-        // Clear all repositories before each test to ensure a clean state
-        imageRepository.deleteAll();
-        itemRepository.deleteAll();
-        storageRepository.deleteAll();
-        categoryAttributeTemplateRepository.deleteAll();
-        categoryRepository.deleteAll();
-        tagRepository.deleteAll();
-        roomRepository.deleteAll();
-    }
 
     @Test
     void shouldCreateRoomSuccessfully() throws Exception {
