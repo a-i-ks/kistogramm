@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kistogramm_app
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/kistogramm
+      - SPRING_DATASOURCE_USERNAME=kisto_user
+      - SPRING_DATASOURCE_PASSWORD=secret
+    networks:
+      - kistonet
+
+  db:
+    image: postgres:16
+    container_name: kistogramm_db
+    restart: always
+    environment:
+      POSTGRES_DB: kistogramm
+      POSTGRES_USER: kisto_user
+      POSTGRES_PASSWORD: secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - kistonet
+
+volumes:
+  pgdata:
+
+networks:
+  kistonet:
