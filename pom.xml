@@ -61,6 +61,13 @@
             <properties>
                 <spring.profiles.active>prod</spring.profiles.active>
             </properties>
+            <dependencies>
+                <dependency>
+                    <groupId>com.h2database</groupId>
+                    <artifactId>h2</artifactId>
+                    <scope>test</scope>
+                </dependency>
+            </dependencies>
         </profile>
     </profiles>
 
@@ -103,6 +110,15 @@
     <build>
         <plugins>
             <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <profiles>
+                        <profile>${spring.profiles.active}</profile>
+                    </profiles>
+                </configuration>
+            </plugin>
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.14.0</version>
@@ -114,10 +130,11 @@
                             <version>1.6.3</version>
                         </path>
                     </annotationProcessorPaths>
+                    <excludes>
+                        <exclude>**/application-dev.properties</exclude>
+                    </excludes>
                 </configuration>
             </plugin>
         </plugins>
     </build>
-
-
 </project>
