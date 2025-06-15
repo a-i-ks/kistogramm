@@ -52,14 +52,14 @@
                 </dependency>
             </dependencies>
             <properties>
-                <spring.profiles.active>dev</spring.profiles.active>
+                <springProfile>dev</springProfile>
             </properties>
         </profile>
 
         <profile>
             <id>prod</id>
             <properties>
-                <spring.profiles.active>prod</spring.profiles.active>
+                <springProfile>prod</springProfile>
             </properties>
             <dependencies>
                 <dependency>
@@ -73,6 +73,20 @@
                     <scope>runtime</scope>
                 </dependency>
             </dependencies>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-jar-plugin</artifactId>
+                        <configuration>
+                            <excludes>
+                                <exclude>**/application-dev.yml</exclude>
+                                <exclude>**/application-dev.properties</exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
     </profiles>
 
@@ -135,9 +149,6 @@
                             <version>1.6.3</version>
                         </path>
                     </annotationProcessorPaths>
-                    <excludes>
-                        <exclude>**/application-dev.properties</exclude>
-                    </excludes>
                 </configuration>
             </plugin>
         </plugins>
