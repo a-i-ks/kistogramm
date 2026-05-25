@@ -10,10 +10,15 @@ services:
       - "8080:8080"
     depends_on:
       - db
+      - redis
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/kistogramm
       - SPRING_DATASOURCE_USERNAME=kisto_user
       - SPRING_DATASOURCE_PASSWORD=secret
+      - AI_UPLOAD_DIR=/uploads
+      - AI_WEBHOOK_SECRET=${WEBHOOK_SECRET:-change-me-in-production}
+    volumes:
+      - ai_uploads:/uploads
     networks:
       - kistonet
 
@@ -32,8 +37,38 @@ services:
     networks:
       - kistonet
 
+  redis:
+    image: redis:7-alpine
+    container_name: kistogramm_redis
+    restart: always
+    networks:
+      - kistonet
+
+  ai-worker:
+    build:
+      context: ./ai-worker
+      dockerfile: Dockerfile
+    container_name: kistogramm_ai_worker
+    restart: always
+    depends_on:
+      - redis
+      - app
+    volumes:
+      - ai_uploads:/uploads
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CALLBACK_URL=http://app:8080/api/ai/webhook/result
+      - WEBHOOK_SECRET=${WEBHOOK_SECRET:-change-me-in-production}
+      - OLLAMA_HOST=http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - kistonet
+
 volumes:
   pgdata:
+  ai_uploads:
 
 networks:
   kistonet:
