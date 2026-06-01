@@ -1,4 +1,4 @@
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:25-jre-noble
 
 ARG JAR_FILE=target/Kistogramm*.jar
 COPY ${JAR_FILE} app.jar

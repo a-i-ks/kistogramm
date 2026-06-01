@@ -9,9 +9,12 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
+      - SPRING_PROFILES_ACTIVE=prod
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/kistogramm
       - SPRING_DATASOURCE_USERNAME=kisto_user
       - SPRING_DATASOURCE_PASSWORD=secret
@@ -36,6 +39,11 @@ services:
       - pgdata:/var/lib/postgresql/data
     networks:
       - kistonet
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kisto_user -d kistogramm"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   redis:
     image: redis:7-alpine
@@ -43,6 +51,11 @@ services:
     restart: always
     networks:
       - kistonet
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   ai-worker:
     build:
@@ -51,8 +64,10 @@ services:
     container_name: kistogramm_ai_worker
     restart: always
     depends_on:
-      - redis
-      - app
+      redis:
+        condition: service_healthy
+      app:
+        condition: service_started
     volumes:
       - ai_uploads:/uploads
     environment:
