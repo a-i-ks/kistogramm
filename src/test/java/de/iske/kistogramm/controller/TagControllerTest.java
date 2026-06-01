@@ -127,9 +127,9 @@ class TagControllerTest extends AbstractControllerTest {
 
         Item createdItem = objectMapper.readValue(itemResponse, Item.class);
 
-        // 3. Versuch, Tag zu löschen → sollte fehlschlagen (409 Conflict)
+        // 3. Attempt to delete tag still assigned to an item → must fail with 409 Conflict
         mockMvc.perform(delete("/api/tags/" + createdTag.getId()))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isConflict());
 
         // 4. Tag vom Item entfernen
         createdItem.setTagIds(Set.of());

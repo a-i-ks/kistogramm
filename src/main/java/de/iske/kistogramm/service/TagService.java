@@ -4,8 +4,12 @@ import de.iske.kistogramm.dto.Item;
 import de.iske.kistogramm.dto.Tag;
 import de.iske.kistogramm.mapper.TagMapper;
 import de.iske.kistogramm.model.TagEntity;
+import de.iske.kistogramm.repository.ItemRepository;
+import de.iske.kistogramm.repository.StorageRepository;
 import de.iske.kistogramm.repository.TagRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,14 +19,20 @@ import java.util.Optional;
 public class TagService {
 
     private final TagRepository tagRepository;
+    private final ItemRepository itemRepository;
+    private final StorageRepository storageRepository;
     private final ItemService itemService;
     private final TagMapper tagMapper;
 
     public TagService(
             TagRepository tagRepository,
+            ItemRepository itemRepository,
+            StorageRepository storageRepository,
             TagMapper tagMapper,
             ItemService itemService) {
         this.tagRepository = tagRepository;
+        this.itemRepository = itemRepository;
+        this.storageRepository = storageRepository;
         this.itemService = itemService;
         this.tagMapper = tagMapper;
     }
@@ -57,6 +67,14 @@ public class TagService {
     }
 
     public void deleteTag(Integer id) {
+        long itemCount = itemRepository.findByTagsId(id).size();
+        long storageCount = storageRepository.findByTagsId(id).size();
+        if (itemCount > 0 || storageCount > 0) {
+            throw new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Tag wird noch verwendet (" + itemCount + " Gegenstände, " + storageCount + " Lagerorte)"
+            );
+        }
         tagRepository.deleteById(id);
     }
 
