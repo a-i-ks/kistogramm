@@ -31,19 +31,22 @@ public class StorageService {
     private final StorageMapper storageMapper;
     private final ImageRepository imageRepository;
     private final ImageMapper imageMapper;
+    private final ImageCompressionService imageCompressionService;
 
     public StorageService(StorageRepository storageRepository,
                           RoomRepository roomRepository,
                           TagRepository tagRepository,
                           ImageRepository imageRepository,
                           StorageMapper storageMapper,
-                          ImageMapper imageMapper) {
+                          ImageMapper imageMapper,
+                          ImageCompressionService imageCompressionService) {
         this.storageRepository = storageRepository;
         this.roomRepository = roomRepository;
         this.imageRepository = imageRepository;
         this.tagRepository = tagRepository;
         this.storageMapper = storageMapper;
         this.imageMapper = imageMapper;
+        this.imageCompressionService = imageCompressionService;
     }
 
     public List<Storage> getAll() {
@@ -146,7 +149,7 @@ public class StorageService {
         for (MultipartFile file : files) {
             try {
                 ImageEntity image = new ImageEntity();
-                image.setData(file.getBytes());
+                image.setData(imageCompressionService.compress(file.getBytes(), file.getContentType()));
                 image.setType(file.getContentType());
                 image.setDateAdded(LocalDateTime.now());
                 image.setDateModified(LocalDateTime.now());

@@ -25,6 +25,7 @@ public class ItemService {
     private final CategoryAttributeTemplateRepository templateRepository;
     private final ItemMapper itemMapper;
     private final ImageMapper imageMapper;
+    private final ImageCompressionService imageCompressionService;
 
     public ItemService(ItemRepository itemRepository,
                        CategoryRepository categoryRepository,
@@ -33,7 +34,8 @@ public class ItemService {
                        ImageRepository imageRepository,
                        CategoryAttributeTemplateRepository templateRepository,
                        ImageMapper imageMapper,
-                       ItemMapper itemMapper) {
+                       ItemMapper itemMapper,
+                       ImageCompressionService imageCompressionService) {
         this.itemRepository = itemRepository;
         this.categoryRepository = categoryRepository;
         this.storageRepository = storageRepository;
@@ -42,6 +44,7 @@ public class ItemService {
         this.templateRepository = templateRepository;
         this.itemMapper = itemMapper;
         this.imageMapper = imageMapper;
+        this.imageCompressionService = imageCompressionService;
     }
 
     public List<Item> getAllItems() {
@@ -254,7 +257,7 @@ public class ItemService {
         for (MultipartFile file : files) {
             try {
                 ImageEntity image = new ImageEntity();
-                image.setData(file.getBytes());
+                image.setData(imageCompressionService.compress(file.getBytes(), file.getContentType()));
                 image.setType(file.getContentType());
                 image.setDateAdded(LocalDateTime.now());
                 image.setDateModified(LocalDateTime.now());
@@ -277,7 +280,7 @@ public class ItemService {
         for (MultipartFile file : files) {
             try {
                 ImageEntity image = new ImageEntity();
-                image.setData(file.getBytes());
+                image.setData(imageCompressionService.compress(file.getBytes(), file.getContentType()));
                 image.setType(file.getContentType());
                 image.setDateAdded(LocalDateTime.now());
                 image.setDateModified(LocalDateTime.now());

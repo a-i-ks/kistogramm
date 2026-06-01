@@ -14,6 +14,7 @@ import de.iske.kistogramm.repository.ImageRepository;
 import de.iske.kistogramm.repository.RoomRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import de.iske.kistogramm.service.ImageCompressionService;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -29,6 +30,7 @@ public class RoomService {
     private final RoomMapper roomMapper;
     private final ImageMapper imageMapper;
     private final ItemMapper itemMapper;
+    private final ImageCompressionService imageCompressionService;
 
     public RoomService(
             RoomRepository roomRepository,
@@ -36,13 +38,15 @@ public class RoomService {
             StorageMapper storageMapper,
             ImageMapper imageMapper,
             ItemMapper itemMapper,
-            RoomMapper roomMapper) {
+            RoomMapper roomMapper,
+            ImageCompressionService imageCompressionService) {
         this.roomRepository = roomRepository;
         this.imageRepository = imageRepository;
         this.storageMapper = storageMapper;
         this.roomMapper = roomMapper;
         this.itemMapper = itemMapper;
         this.imageMapper = imageMapper;
+        this.imageCompressionService = imageCompressionService;
     }
 
     public List<Room> getAllRooms() {
@@ -104,7 +108,7 @@ public class RoomService {
 
         try {
             ImageEntity image = new ImageEntity();
-            image.setData(file.getBytes());
+            image.setData(imageCompressionService.compress(file.getBytes(), file.getContentType()));
             image.setType(file.getContentType());
             image.setDateAdded(LocalDateTime.now());
             image.setDateModified(LocalDateTime.now());
