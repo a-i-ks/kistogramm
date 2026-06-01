@@ -1,6 +1,5 @@
 package de.iske.kistogramm.dto;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
@@ -11,17 +10,22 @@ public class AiWebhookPayload {
     @NotNull
     private UUID jobId;
 
-    @NotBlank
-    private String name;
+    private String jobType;
 
+    private String name;
     private String description;
     private String category;
     private List<String> tags;
     private Integer quantity;
     private Double purchasePrice;
 
+    private String proposalData;
+
     public UUID getJobId() { return jobId; }
     public void setJobId(UUID jobId) { this.jobId = jobId; }
+
+    public String getJobType() { return jobType; }
+    public void setJobType(String jobType) { this.jobType = jobType; }
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
@@ -40,4 +44,7 @@ public class AiWebhookPayload {
 
     public Double getPurchasePrice() { return purchasePrice; }
     public void setPurchasePrice(Double purchasePrice) { this.purchasePrice = purchasePrice; }
+
+    public String getProposalData() { return proposalData; }
+    public void setProposalData(String proposalData) { this.proposalData = proposalData; }
 }

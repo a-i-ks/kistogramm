@@ -1,5 +1,7 @@
 package de.iske.kistogramm.controller;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import de.iske.kistogramm.dto.AiJobResponse;
 import de.iske.kistogramm.model.AiJobEntity;
 import de.iske.kistogramm.service.AiQueueService;
@@ -18,19 +20,35 @@ import java.io.IOException;
 public class AiIngestionController {
 
     private final AiQueueService aiQueueService;
+    private final ObjectMapper objectMapper;
 
-    public AiIngestionController(AiQueueService aiQueueService) {
+    public AiIngestionController(AiQueueService aiQueueService, ObjectMapper objectMapper) {
         this.aiQueueService = aiQueueService;
+        this.objectMapper = objectMapper;
     }
 
     @PostMapping("/ingest")
     public ResponseEntity<AiJobResponse> ingest(
             @RequestParam("image") MultipartFile image,
-            @RequestParam("audio") MultipartFile audio) throws IOException {
+            @RequestParam(value = "audio", required = false) MultipartFile audio,
+            @RequestParam(value = "metadata", required = false) String metadataJson) throws IOException {
 
-        AiJobEntity job = aiQueueService.submitJob(image, audio);
+        Integer storageId = null;
+        Integer roomId = null;
+
+        if (metadataJson != null && !metadataJson.isBlank()) {
+            try {
+                JsonNode meta = objectMapper.readTree(metadataJson);
+                if (meta.hasNonNull("storageId")) storageId = meta.get("storageId").asInt();
+                if (meta.hasNonNull("roomId"))    roomId    = meta.get("roomId").asInt();
+            } catch (Exception ignored) {
+                // malformed metadata is not fatal
+            }
+        }
+
+        AiJobEntity job = aiQueueService.submitJob(image, audio, storageId, roomId);
         return ResponseEntity
                 .status(HttpStatus.ACCEPTED)
-                .body(new AiJobResponse(job.getId(), job.getStatus().name()));
+                .body(AiJobResponse.from(job));
     }
 }

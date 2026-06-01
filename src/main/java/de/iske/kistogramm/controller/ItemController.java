@@ -1,13 +1,18 @@
 package de.iske.kistogramm.controller;
 
+import de.iske.kistogramm.dto.AiJobResponse;
 import de.iske.kistogramm.dto.Image;
 import de.iske.kistogramm.dto.Item;
+import de.iske.kistogramm.model.AiJobEntity;
+import de.iske.kistogramm.service.AiQueueService;
 import de.iske.kistogramm.service.ItemService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -15,9 +20,17 @@ import java.util.List;
 public class ItemController {
 
     private final ItemService itemService;
+    private final AiQueueService aiQueueService;
 
-    public ItemController(ItemService itemService) {
+    public ItemController(ItemService itemService, AiQueueService aiQueueService) {
         this.itemService = itemService;
+        this.aiQueueService = aiQueueService;
+    }
+
+    public static class AnalyzeRequest {
+        private String jobType;
+        public String getJobType() { return jobType; }
+        public void setJobType(String jobType) { this.jobType = jobType; }
     }
 
     @GetMapping
@@ -128,5 +141,21 @@ public class ItemController {
         return ResponseEntity.ok().build();
     }
 
-
+    @PostMapping("/{id}/ai/analyze")
+    @Transactional
+    public ResponseEntity<AiJobResponse> analyzeItem(
+            @PathVariable Integer id,
+            @RequestBody AnalyzeRequest request) throws IOException {
+        AiJobEntity.JobType jobType;
+        try {
+            jobType = AiJobEntity.JobType.valueOf(request.getJobType());
+        } catch (IllegalArgumentException | NullPointerException e) {
+            throw new IllegalArgumentException("Unknown or missing jobType: " + request.getJobType());
+        }
+        if (jobType == AiJobEntity.JobType.INGESTION) {
+            throw new IllegalArgumentException("INGESTION jobs cannot be triggered via this endpoint.");
+        }
+        AiJobEntity job = aiQueueService.submitAnalysisJob(id, jobType);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(AiJobResponse.from(job));
+    }
 }
