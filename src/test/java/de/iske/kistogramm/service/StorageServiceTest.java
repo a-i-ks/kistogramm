@@ -3,6 +3,7 @@ package de.iske.kistogramm.service;
 import de.iske.kistogramm.dto.Storage;
 import de.iske.kistogramm.model.RoomEntity;
 import de.iske.kistogramm.repository.*;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest(properties = "spring.profiles.active=test")
 @Transactional
-@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_CLASS)
 class StorageServiceTest {
 
     @Autowired
@@ -44,26 +45,24 @@ class StorageServiceTest {
     @Autowired
     private TagRepository tagRepository;
 
+    @Autowired
+    private EntityManager entityManager;
+
     @BeforeEach
     void setUp() {
-        // Cleanup before each test to ensure a clean state
-        // Unlink all images from items to avoid foreign key constraint issues
         itemRepository.findAll().forEach(item -> {
             item.setImages(null);
             itemRepository.save(item);
         });
-        // Unlink all images from storages to avoid foreign key constraint issues
         storageRepository.findAll().forEach(storage -> {
             storage.setImages(null);
             storageRepository.save(storage);
         });
-        // Unlink all images from rooms to avoid foreign key constraint issues
         roomRepository.findAll().forEach(room -> {
             room.setImage(null);
             roomRepository.save(room);
         });
 
-        // Clear all repositories before each test to ensure a clean state
         imageRepository.deleteAll();
         itemRepository.deleteAll();
         storageRepository.deleteAll();
@@ -71,6 +70,9 @@ class StorageServiceTest {
         categoryRepository.deleteAll();
         tagRepository.deleteAll();
         roomRepository.deleteAll();
+        // Force Hibernate to flush DELETEs before any subsequent INSERTs
+        entityManager.flush();
+        entityManager.clear();
     }
 
     @Test

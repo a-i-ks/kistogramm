@@ -62,6 +62,7 @@ public class StorageService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public Optional<Storage> getById(Integer id) {
         return storageRepository.findById(id)
                 .map(entity -> {
