@@ -32,10 +32,34 @@ public class AiJobController {
         return ResponseEntity.ok(aiJobService.getJob(jobId));
     }
 
+    @DeleteMapping
+    public ResponseEntity<Map<String, Integer>> deleteJobsBulk(
+            @RequestParam(required = false) String status) {
+        int count = aiJobService.deleteJobsByStatus(status);
+        return ResponseEntity.ok(Map.of("deleted", count));
+    }
+
     @DeleteMapping("/{jobId}")
     public ResponseEntity<Void> cancelOrDeleteJob(@PathVariable UUID jobId) {
         aiJobService.cancelOrDeleteJob(jobId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{jobId}/start")
+    public ResponseEntity<Void> markStarted(@PathVariable UUID jobId,
+            @RequestHeader(value = "X-Webhook-Secret", required = false) String secret) {
+        aiJobService.markStarted(jobId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{jobId}/pause")
+    public ResponseEntity<AiJobResponse> pauseJob(@PathVariable UUID jobId) {
+        return ResponseEntity.ok(aiJobService.pauseJob(jobId));
+    }
+
+    @PostMapping("/{jobId}/resume")
+    public ResponseEntity<AiJobResponse> resumeJob(@PathVariable UUID jobId) {
+        return ResponseEntity.ok(aiJobService.resumeJob(jobId));
     }
 
     @PostMapping("/{jobId}/accept")

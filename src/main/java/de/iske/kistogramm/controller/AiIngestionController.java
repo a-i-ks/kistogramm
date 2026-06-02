@@ -35,18 +35,24 @@ public class AiIngestionController {
 
         Integer storageId = null;
         Integer roomId = null;
+        String contextHint = null;
 
         if (metadataJson != null && !metadataJson.isBlank()) {
             try {
                 JsonNode meta = objectMapper.readTree(metadataJson);
                 if (meta.hasNonNull("storageId")) storageId = meta.get("storageId").asInt();
                 if (meta.hasNonNull("roomId"))    roomId    = meta.get("roomId").asInt();
+                String title = meta.hasNonNull("title") ? meta.get("title").asText().strip() : "";
+                String desc  = meta.hasNonNull("description") ? meta.get("description").asText().strip() : "";
+                if (!title.isBlank() || !desc.isBlank()) {
+                    contextHint = (title + ((!title.isBlank() && !desc.isBlank()) ? " – " : "") + desc).strip();
+                }
             } catch (Exception ignored) {
                 // malformed metadata is not fatal
             }
         }
 
-        AiJobEntity job = aiQueueService.submitJob(image, audio, storageId, roomId);
+        AiJobEntity job = aiQueueService.submitJob(image, audio, storageId, roomId, contextHint);
         return ResponseEntity
                 .status(HttpStatus.ACCEPTED)
                 .body(AiJobResponse.from(job));

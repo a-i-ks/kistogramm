@@ -10,7 +10,7 @@ import java.util.UUID;
 public class AiJobEntity {
 
     public enum Status {
-        PENDING, PROCESSING, DONE, FAILED, CANCELLED
+        PENDING, PAUSED, PROCESSING, DONE, FAILED, CANCELLED
     }
 
     public enum JobType {
@@ -56,6 +56,15 @@ public class AiJobEntity {
 
     @Column(name = "proposal_data", columnDefinition = "TEXT")
     private String proposalData;
+
+    @Column(name = "whisper_transcript", columnDefinition = "TEXT")
+    private String whisperTranscript;
+
+    @Column(name = "context_hint", columnDefinition = "TEXT")
+    private String contextHint;
+
+    @Column(name = "date_started")
+    private LocalDateTime dateStarted;
 
     @Column(name = "date_created")
     private LocalDateTime dateCreated;
@@ -107,6 +116,15 @@ public class AiJobEntity {
 
     public String getProposalData() { return proposalData; }
     public void setProposalData(String proposalData) { this.proposalData = proposalData; }
+
+    public String getWhisperTranscript() { return whisperTranscript; }
+    public void setWhisperTranscript(String whisperTranscript) { this.whisperTranscript = whisperTranscript; }
+
+    public String getContextHint() { return contextHint; }
+    public void setContextHint(String contextHint) { this.contextHint = contextHint; }
+
+    public LocalDateTime getDateStarted() { return dateStarted; }
+    public void setDateStarted(LocalDateTime dateStarted) { this.dateStarted = dateStarted; }
 
     public LocalDateTime getDateCreated() { return dateCreated; }
     public LocalDateTime getDateModified() { return dateModified; }

@@ -1,0 +1,2 @@
+-- PAUSED status added to AiJobEntity.Status enum.
+-- No schema change required: status column is already VARCHAR(20) which fits 'PAUSED'.

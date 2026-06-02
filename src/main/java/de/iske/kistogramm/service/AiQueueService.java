@@ -46,7 +46,8 @@ public class AiQueueService {
     public AiJobEntity submitJob(MultipartFile imageFile,
                                  MultipartFile audioFile,
                                  Integer storageId,
-                                 Integer roomId) throws IOException {
+                                 Integer roomId,
+                                 String contextHint) throws IOException {
         UUID jobId = UUID.randomUUID();
         Path jobDir = Path.of(uploadDir, jobId.toString());
         Files.createDirectories(jobDir);
@@ -70,11 +71,12 @@ public class AiQueueService {
         job.setAudioPath(audioPath != null ? audioPath.toAbsolutePath().toString() : null);
         job.setStorageId(storageId);
         job.setRoomId(roomId);
+        job.setContextHint(contextHint);
         aiJobRepository.save(job);
 
         pushToQueue(jobId, imagePath.toAbsolutePath().toString(),
                 audioPath != null ? audioPath.toAbsolutePath().toString() : null,
-                AiJobEntity.JobType.INGESTION, null);
+                AiJobEntity.JobType.INGESTION, null, contextHint);
         return job;
     }
 
@@ -113,7 +115,7 @@ public class AiQueueService {
         job.setProposalStatus(AiJobEntity.ProposalStatus.NONE);
         aiJobRepository.save(job);
 
-        pushToQueue(jobId, imagePath.toAbsolutePath().toString(), null, jobType, itemId);
+        pushToQueue(jobId, imagePath.toAbsolutePath().toString(), null, jobType, itemId, null);
         return job;
     }
 
@@ -127,7 +129,7 @@ public class AiQueueService {
     }
 
     private void pushToQueue(UUID jobId, String imagePath, String audioPath,
-                              AiJobEntity.JobType jobType, Integer itemId) {
+                              AiJobEntity.JobType jobType, Integer itemId, String contextHint) {
         try {
             Map<String, String> payload = new LinkedHashMap<>();
             payload.put("jobId", jobId.toString());
@@ -135,6 +137,7 @@ public class AiQueueService {
             payload.put("audioPath", audioPath != null ? audioPath : "");
             payload.put("jobType", jobType.name());
             if (itemId != null) payload.put("itemId", itemId.toString());
+            if (contextHint != null && !contextHint.isBlank()) payload.put("contextHint", contextHint);
             redisTemplate.opsForList().leftPush(QUEUE_KEY, objectMapper.writeValueAsString(payload));
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Failed to serialize job payload", e);

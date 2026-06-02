@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -78,7 +79,7 @@ public class AiJobService {
                 .orElseThrow(() -> new NoSuchElementException("Job not found: " + jobId));
 
         switch (job.getStatus()) {
-            case PENDING -> {
+            case PENDING, PAUSED -> {
                 job.setStatus(AiJobEntity.Status.CANCELLED);
                 aiJobRepository.save(job);
             }
@@ -86,6 +87,30 @@ public class AiJobService {
                     "Job is currently being processed and cannot be cancelled. Wait for completion or failure.");
             case DONE, FAILED, CANCELLED -> aiJobRepository.delete(job);
         }
+    }
+
+    @Transactional
+    public AiJobResponse pauseJob(UUID jobId) {
+        AiJobEntity job = aiJobRepository.findById(jobId)
+                .orElseThrow(() -> new NoSuchElementException("Job not found: " + jobId));
+        if (job.getStatus() != AiJobEntity.Status.PENDING) {
+            throw new IllegalArgumentException("Only PENDING jobs can be paused. Current status: " + job.getStatus());
+        }
+        job.setStatus(AiJobEntity.Status.PAUSED);
+        aiJobRepository.save(job);
+        return AiJobResponse.from(job);
+    }
+
+    @Transactional
+    public AiJobResponse resumeJob(UUID jobId) {
+        AiJobEntity job = aiJobRepository.findById(jobId)
+                .orElseThrow(() -> new NoSuchElementException("Job not found: " + jobId));
+        if (job.getStatus() != AiJobEntity.Status.PAUSED) {
+            throw new IllegalArgumentException("Only PAUSED jobs can be resumed. Current status: " + job.getStatus());
+        }
+        job.setStatus(AiJobEntity.Status.PENDING);
+        aiJobRepository.save(job);
+        return AiJobResponse.from(job);
     }
 
     @Transactional
@@ -200,6 +225,26 @@ public class AiJobService {
                 item.getTags().add(tag);
             }
         }
+    }
+
+    @Transactional
+    public void markStarted(UUID jobId) {
+        AiJobEntity job = aiJobRepository.findById(jobId)
+                .orElseThrow(() -> new NoSuchElementException("Job not found: " + jobId));
+        job.setStatus(AiJobEntity.Status.PROCESSING);
+        job.setDateStarted(java.time.LocalDateTime.now());
+        aiJobRepository.save(job);
+    }
+
+    @Transactional
+    public int deleteJobsByStatus(@Nullable String statusStr) {
+        List<AiJobEntity> jobs = statusStr != null
+                ? aiJobRepository.findByStatus(parseStatus(statusStr))
+                : aiJobRepository.findAll().stream()
+                        .filter(j -> j.getStatus() != AiJobEntity.Status.PROCESSING)
+                        .collect(java.util.stream.Collectors.toList());
+        aiJobRepository.deleteAll(jobs);
+        return jobs.size();
     }
 
     private @Nullable AiJobEntity.JobType parseJobType(@Nullable String value) {

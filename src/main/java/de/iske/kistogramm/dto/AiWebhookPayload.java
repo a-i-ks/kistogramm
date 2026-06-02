@@ -21,6 +21,9 @@ public class AiWebhookPayload {
 
     private String proposalData;
 
+    private String error;
+    private String transcript;
+
     public UUID getJobId() { return jobId; }
     public void setJobId(UUID jobId) { this.jobId = jobId; }
 
@@ -47,4 +50,10 @@ public class AiWebhookPayload {
 
     public String getProposalData() { return proposalData; }
     public void setProposalData(String proposalData) { this.proposalData = proposalData; }
+
+    public String getError() { return error; }
+    public void setError(String error) { this.error = error; }
+
+    public String getTranscript() { return transcript; }
+    public void setTranscript(String transcript) { this.transcript = transcript; }
 }

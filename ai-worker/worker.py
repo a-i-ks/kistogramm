@@ -3,6 +3,8 @@ import json
 import base64
 import logging
 import re
+import time
+import urllib.parse
 import redis
 import httpx
 from faster_whisper import WhisperModel
@@ -14,22 +16,34 @@ REDIS_HOST = os.environ.get("REDIS_HOST", "redis")
 REDIS_PORT = int(os.environ.get("REDIS_PORT", 6379))
 CALLBACK_URL = os.environ["CALLBACK_URL"]
 WEBHOOK_SECRET = os.environ["WEBHOOK_SECRET"]
+_parsed = urllib.parse.urlparse(CALLBACK_URL)
+APP_URL = f"{_parsed.scheme}://{_parsed.netloc}"
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://host.docker.internal:11434")
 QUEUE_KEY = "ai_jobs_queue"
 VLM_MODEL = os.environ.get("VLM_MODEL", "qwen2.5vl:7b")
 
-PROMPT_INGESTION = """\
-You are an inventory assistant. The user described this item as: "{transcript}"
-
+PROMPT_INGESTION_BASE = """\
+You are an inventory assistant.
+{context_block}
 Look at the image carefully and return a single valid JSON object with these fields:
-- "name": the specific name of the object you see (e.g. "blue spray bottle", "wooden chair")
-- "description": 1-2 sentences describing color, shape, material, and condition
+- "name": the specific name of the object you see in German (e.g. "blaue Sprühflasche", "Holzstuhl")
+- "description": 1-2 sentences in German describing color, shape, material, and condition
 - "category": exactly one of: Elektronik, Kleidung, Moebelstueck, Lebensmittel, Pflanze, Sonstiges
-- "tags": list of 3-5 relevant lowercase tags
+- "tags": list of 3-5 relevant lowercase tags in German
 - "quantity": number of items visible (integer)
 - "purchase_price": null
 
-Respond with ONLY the JSON object, no markdown, no explanation."""
+All text values must be in German. Respond with ONLY the JSON object, no markdown, no explanation."""
+
+
+def build_ingestion_prompt(transcript: str, context_hint: str) -> str:
+    parts = []
+    if transcript:
+        parts.append(f'The user described this item by voice: "{transcript}"')
+    if context_hint:
+        parts.append(f'User-provided context hint: "{context_hint}"')
+    context_block = "\n".join(parts) + "\n" if parts else ""
+    return PROMPT_INGESTION_BASE.format(context_block=context_block)
 
 PROMPT_DIMENSION = """\
 You are an inventory assistant. Look at this item carefully and estimate its physical dimensions.
@@ -52,7 +66,7 @@ Return ONLY a JSON object with these fields:
 - "maxValue": optimistic market value as a number (EUR)
 - "currency": "EUR"
 - "confidence": one of "low", "medium", "high"
-- "reasoning": one sentence explaining the estimate
+- "reasoning": one sentence in German explaining the estimate
 
 Respond with ONLY the JSON object, no markdown, no explanation."""
 
@@ -60,32 +74,45 @@ PROMPT_CONDITION = """\
 You are an inventory condition assessor. Examine this item carefully.
 Return ONLY a JSON object with these fields:
 - "condition": one of "neuwertig", "sehr gut", "gut", "akzeptabel", "schlecht"
-- "conditionDetails": 1-2 sentences describing visible wear, damage, or notable features
+- "conditionDetails": 1-2 sentences in German describing visible wear, damage, or notable features
 
 Respond with ONLY the JSON object, no markdown, no explanation."""
 
 PROMPT_TAGS = """\
 You are an inventory tagging assistant. Look at this item and suggest relevant tags.
 Return ONLY a JSON object with:
-- "tags": list of 3-6 relevant lowercase German tags (e.g. ["elektronik", "kabel", "usb"])
+- "tags": list of 3-6 relevant lowercase tags in German (e.g. ["elektronik", "kabel", "usb"])
 
 Respond with ONLY the JSON object, no markdown, no explanation."""
+
+def check_ollama_health() -> bool:
+    try:
+        resp = httpx.get(f"{OLLAMA_HOST}/api/tags", timeout=5)
+        resp.raise_for_status()
+        return True
+    except Exception as exc:
+        log.error("OLLAMA_UNREACHABLE: Ollama is not reachable at %s — %s", OLLAMA_HOST, exc)
+        return False
+
 
 log.info("Loading Whisper model (CPU)...")
 whisper_model = WhisperModel("base", device="cpu", compute_type="int8")
 log.info("Whisper model loaded.")
 
+if not check_ollama_health():
+    log.warning("OLLAMA_UNREACHABLE: Starting worker anyway, but AI jobs will fail until Ollama is available")
+
 
 def transcribe(audio_path: str) -> str:
-    segments, _ = whisper_model.transcribe(audio_path, beam_size=5)
+    segments, _ = whisper_model.transcribe(audio_path, beam_size=5, language="de")
     return " ".join(s.text for s in segments).strip()
 
 
-def analyze_with_vlm(image_path: str, transcript: str) -> dict:
+def analyze_with_vlm(image_path: str, transcript: str, context_hint: str = "") -> dict:
     with open(image_path, "rb") as f:
         img_b64 = base64.b64encode(f.read()).decode()
 
-    prompt = PROMPT_INGESTION.format(transcript=transcript)
+    prompt = build_ingestion_prompt(transcript, context_hint)
     payload = {"model": VLM_MODEL, "prompt": prompt, "images": [img_b64], "stream": False}
     resp = httpx.post(f"{OLLAMA_HOST}/api/generate", json=payload, timeout=600)
     resp.raise_for_status()
@@ -123,11 +150,15 @@ def _parse_json_response(raw: str) -> dict:
     return json.loads(raw[start:end])
 
 
-def send_callback(job_id: str, job_type: str, result: dict = None, proposal_data: str = None) -> None:
-    if job_type == "INGESTION":
+def send_callback(job_id: str, job_type: str, result: dict = None, proposal_data: str = None, error: str = None, transcript: str = None) -> None:
+    if error is not None:
+        payload = {"jobId": job_id, "jobType": job_type, "error": error}
+    elif job_type == "INGESTION":
         payload = {"jobId": job_id, "jobType": job_type, **(result or {})}
         if "purchase_price" in payload:
             payload["purchasePrice"] = payload.pop("purchase_price")
+        if transcript:
+            payload["transcript"] = transcript
     else:
         payload = {"jobId": job_id, "jobType": job_type, "proposalData": proposal_data}
 
@@ -144,20 +175,34 @@ ANALYSIS_PROMPTS = {
 }
 
 
+def notify_started(job_id: str) -> None:
+    try:
+        headers = {"X-Webhook-Secret": WEBHOOK_SECRET}
+        httpx.post(f"{APP_URL}/api/ai/jobs/{job_id}/start", headers=headers, timeout=5)
+    except Exception as exc:
+        log.warning("Could not notify start for job %s: %s", job_id, exc)
+
+
 def process_job(job: dict) -> None:
     job_id = job["jobId"]
     job_type = job.get("jobType", "INGESTION")
     log.info("Processing job %s type=%s", job_id, job_type)
+
+    notify_started(job_id)
+
+    if not check_ollama_health():
+        raise RuntimeError(f"OLLAMA_UNREACHABLE: Ollama not available at {OLLAMA_HOST}, cannot process job {job_id}")
 
     if job_type == "INGESTION":
         audio_path = job.get("audioPath", "")
         transcript = transcribe(audio_path) if audio_path else ""
         log.info("Transcript for job %s: %s", job_id, transcript[:120])
 
-        result = analyze_with_vlm(job["imagePath"], transcript)
+        context_hint = job.get("contextHint", "")
+        result = analyze_with_vlm(job["imagePath"], transcript, context_hint)
         log.info("VLM result for job %s: %s", job_id, result)
 
-        send_callback(job_id, job_type="INGESTION", result=result)
+        send_callback(job_id, job_type="INGESTION", result=result, transcript=transcript)
 
     elif job_type in ANALYSIS_PROMPTS:
         prompt = ANALYSIS_PROMPTS[job_type]
@@ -174,19 +219,38 @@ def process_job(job: dict) -> None:
 
 
 def main() -> None:
-    r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
+    r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True, socket_timeout=None)
     log.info("Worker ready, listening on queue '%s'...", QUEUE_KEY)
 
     while True:
+        job = None
+        raw = None
         try:
-            item = r.blpop(QUEUE_KEY, timeout=0)
+            item = r.blpop(QUEUE_KEY, timeout=30)
             if item is None:
                 continue
             _, raw = item
             job = json.loads(raw)
+
+            # Check if job was paused while waiting in the queue
+            try:
+                resp = httpx.get(f"{APP_URL}/api/ai/jobs/{job['jobId']}", timeout=5)
+                if resp.status_code == 200 and resp.json().get("status") == "PAUSED":
+                    log.info("Job %s is PAUSED, re-queueing", job["jobId"])
+                    r.rpush(QUEUE_KEY, raw)
+                    time.sleep(5)
+                    continue
+            except Exception as check_exc:
+                log.warning("Could not check job status for %s, proceeding: %s", job.get("jobId"), check_exc)
+
             process_job(job)
         except Exception as exc:
             log.error("Job failed: %s", exc, exc_info=True)
+            if job is not None:
+                try:
+                    send_callback(job["jobId"], job.get("jobType", "INGESTION"), error=str(exc))
+                except Exception as cb_exc:
+                    log.error("Failed to send error callback for job %s: %s", job.get("jobId"), cb_exc)
 
 
 if __name__ == "__main__":

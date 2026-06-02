@@ -75,6 +75,13 @@ public class AiWebhookController {
             return ResponseEntity.ok().build();
         }
 
+        if (payload.getError() != null && !payload.getError().isBlank()) {
+            job.setStatus(AiJobEntity.Status.FAILED);
+            job.setErrorMessage(payload.getError());
+            aiJobRepository.save(job);
+            return ResponseEntity.ok().build();
+        }
+
         job.setStatus(AiJobEntity.Status.PROCESSING);
         aiJobRepository.save(job);
 
@@ -127,6 +134,9 @@ public class AiWebhookController {
 
         job.setStatus(AiJobEntity.Status.DONE);
         job.setItemId(created.getId());
+        if (payload.getTranscript() != null && !payload.getTranscript().isBlank()) {
+            job.setWhisperTranscript(payload.getTranscript());
+        }
     }
 
     private void handleAnalysisResult(AiJobEntity job, AiWebhookPayload payload) {
