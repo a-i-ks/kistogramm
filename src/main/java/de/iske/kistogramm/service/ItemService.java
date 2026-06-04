@@ -23,6 +23,7 @@ public class ItemService {
     private final TagRepository tagRepository;
     private final ImageRepository imageRepository;
     private final CategoryAttributeTemplateRepository templateRepository;
+    private final AiJobRepository aiJobRepository;
     private final ItemMapper itemMapper;
     private final ImageMapper imageMapper;
     private final ImageCompressionService imageCompressionService;
@@ -33,6 +34,7 @@ public class ItemService {
                        TagRepository tagRepository,
                        ImageRepository imageRepository,
                        CategoryAttributeTemplateRepository templateRepository,
+                       AiJobRepository aiJobRepository,
                        ImageMapper imageMapper,
                        ItemMapper itemMapper,
                        ImageCompressionService imageCompressionService) {
@@ -42,6 +44,7 @@ public class ItemService {
         this.tagRepository = tagRepository;
         this.imageRepository = imageRepository;
         this.templateRepository = templateRepository;
+        this.aiJobRepository = aiJobRepository;
         this.itemMapper = itemMapper;
         this.imageMapper = imageMapper;
         this.imageCompressionService = imageCompressionService;
@@ -130,6 +133,7 @@ public class ItemService {
     }
 
     public void deleteItem(Integer id) {
+        aiJobRepository.deleteAll(aiJobRepository.findByItemId(id));
         itemRepository.deleteById(id);
     }
 
