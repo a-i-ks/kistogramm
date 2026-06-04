@@ -110,12 +110,14 @@ def transcribe(audio_path: str) -> str:
     return " ".join(s.text for s in segments).strip()
 
 
-def analyze_with_vlm(image_path: str, transcript: str, context_hint: str = "") -> dict:
+def analyze_with_vlm(image_path: str, transcript: str, context_hint: str = "", keep_alive=None) -> dict:
     with open(image_path, "rb") as f:
         img_b64 = base64.b64encode(f.read()).decode()
 
     prompt = build_ingestion_prompt(transcript, context_hint)
     payload = {"model": VLM_MODEL, "prompt": prompt, "images": [img_b64], "stream": False}
+    if keep_alive is not None:
+        payload["keep_alive"] = keep_alive
     resp = httpx.post(f"{OLLAMA_HOST}/api/generate", json=payload, timeout=600)
     resp.raise_for_status()
     raw = resp.json()["response"].strip()
@@ -131,11 +133,13 @@ def analyze_with_vlm(image_path: str, transcript: str, context_hint: str = "") -
     return result
 
 
-def analyze_with_prompt(image_path: str, prompt: str) -> dict:
+def analyze_with_prompt(image_path: str, prompt: str, keep_alive=None) -> dict:
     with open(image_path, "rb") as f:
         img_b64 = base64.b64encode(f.read()).decode()
 
     payload = {"model": VLM_MODEL, "prompt": prompt, "images": [img_b64], "stream": False}
+    if keep_alive is not None:
+        payload["keep_alive"] = keep_alive
     resp = httpx.post(f"{OLLAMA_HOST}/api/generate", json=payload, timeout=600)
     resp.raise_for_status()
     raw = resp.json()["response"].strip()
@@ -184,7 +188,7 @@ def notify_started(job_id: str) -> None:
         log.warning("Could not notify start for job %s: %s", job_id, exc)
 
 
-def process_job(job: dict) -> None:
+def process_job(job: dict, r) -> None:
     job_id = job["jobId"]
     job_type = job.get("jobType", "INGESTION")
     log.info("Processing job %s type=%s", job_id, job_type)
@@ -194,20 +198,24 @@ def process_job(job: dict) -> None:
     if not check_ollama_health():
         raise RuntimeError(f"OLLAMA_UNREACHABLE: Ollama not available at {OLLAMA_HOST}, cannot process job {job_id}")
 
+    queue_depth = r.llen(QUEUE_KEY)
+    keep_alive = -1 if queue_depth > 0 else None
+    log.info("Queue depth after dequeue: %d — keep_alive=%s", queue_depth, keep_alive)
+
     if job_type == "INGESTION":
         audio_path = job.get("audioPath", "")
         transcript = transcribe(audio_path) if audio_path else ""
         log.info("Transcript for job %s: %s", job_id, transcript[:120])
 
         context_hint = job.get("contextHint", "")
-        result = analyze_with_vlm(job["imagePath"], transcript, context_hint)
+        result = analyze_with_vlm(job["imagePath"], transcript, context_hint, keep_alive=keep_alive)
         log.info("VLM result for job %s: %s", job_id, result)
 
         send_callback(job_id, job_type="INGESTION", result=result, transcript=transcript)
 
     elif job_type in ANALYSIS_PROMPTS:
         prompt = ANALYSIS_PROMPTS[job_type]
-        proposal = analyze_with_prompt(job["imagePath"], prompt)
+        proposal = analyze_with_prompt(job["imagePath"], prompt, keep_alive=keep_alive)
         log.info("Proposal for job %s: %s", job_id, proposal)
 
         send_callback(job_id, job_type=job_type, proposal_data=json.dumps(proposal))
@@ -244,7 +252,7 @@ def main() -> None:
             except Exception as check_exc:
                 log.warning("Could not check job status for %s, proceeding: %s", job.get("jobId"), check_exc)
 
-            process_job(job)
+            process_job(job, r)
         except Exception as exc:
             log.error("Job failed: %s", exc, exc_info=True)
             if job is not None:
