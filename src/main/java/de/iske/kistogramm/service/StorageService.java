@@ -13,6 +13,8 @@ import de.iske.kistogramm.repository.RoomRepository;
 import de.iske.kistogramm.repository.StorageRepository;
 import de.iske.kistogramm.repository.TagRepository;
 import jakarta.persistence.EntityNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -24,6 +26,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class StorageService {
+
+    private static final Logger log = LoggerFactory.getLogger(StorageService.class);
 
     private final StorageRepository storageRepository;
     private final RoomRepository roomRepository;
@@ -104,7 +108,9 @@ public class StorageService {
         entity.setDateAdded(LocalDateTime.now());
         entity.setDateModified(LocalDateTime.now());
 
-        return storageMapper.toDto(storageRepository.save(entity));
+        Storage created = storageMapper.toDto(storageRepository.save(entity));
+        log.info("Storage created: id={} name='{}' roomId={}", created.getId(), created.getName(), dto.getRoomId());
+        return created;
     }
 
     public Storage updateStorage(Integer id, Storage updatedStorage) {
@@ -140,6 +146,7 @@ public class StorageService {
     }
 
     public void delete(Integer id) {
+        log.info("Storage deleted: id={}", id);
         storageRepository.deleteById(id);
     }
 

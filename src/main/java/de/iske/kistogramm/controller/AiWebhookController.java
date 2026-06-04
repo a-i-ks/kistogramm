@@ -13,6 +13,8 @@ import de.iske.kistogramm.repository.TagRepository;
 import de.iske.kistogramm.service.ImageCompressionService;
 import de.iske.kistogramm.service.ItemService;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,6 +30,8 @@ import java.util.Set;
 @RestController
 @RequestMapping("/api/ai/webhook")
 public class AiWebhookController {
+
+    private static final Logger log = LoggerFactory.getLogger(AiWebhookController.class);
 
     @Value("${ai.webhook-secret}")
     private String webhookSecret;
@@ -63,19 +67,26 @@ public class AiWebhookController {
             @Valid @RequestBody AiWebhookPayload payload) {
 
         if (!webhookSecret.equals(secret)) {
+            log.warn("Webhook rejected: invalid secret");
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
+        log.info("Webhook received: jobId={} type={}", payload.getJobId(), payload.getJobType());
+
         AiJobEntity job = aiJobRepository.findById(payload.getJobId()).orElse(null);
         if (job == null) {
+            log.warn("Webhook: job not found: {}", payload.getJobId());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
 
         if (job.getStatus() == AiJobEntity.Status.CANCELLED) {
+            log.info("Webhook: job {} is CANCELLED, ignoring result", payload.getJobId());
             return ResponseEntity.ok().build();
         }
 
         if (payload.getError() != null && !payload.getError().isBlank()) {
+            log.error("Webhook: worker reported error for jobId={} type={}: {}",
+                    payload.getJobId(), job.getJobType(), payload.getError());
             job.setStatus(AiJobEntity.Status.FAILED);
             job.setErrorMessage(payload.getError());
             aiJobRepository.save(job);
@@ -92,6 +103,8 @@ public class AiWebhookController {
                 handleAnalysisResult(job, payload);
             }
         } catch (Exception e) {
+            log.error("Webhook: processing failed for jobId={} type={}: {}",
+                    job.getId(), job.getJobType(), e.getMessage(), e);
             job.setStatus(AiJobEntity.Status.FAILED);
             job.setErrorMessage(e.getClass().getSimpleName() + ": " + e.getMessage());
         }
@@ -101,6 +114,9 @@ public class AiWebhookController {
     }
 
     private void handleIngestionResult(AiJobEntity job, AiWebhookPayload payload) {
+        log.debug("Ingestion result: name='{}' category='{}' qty={} tags={}",
+                payload.getName(), payload.getCategory(), payload.getQuantity(), payload.getTags());
+
         Item dto = new Item();
         dto.setName(payload.getName());
         dto.setDescription(payload.getDescription());
@@ -110,7 +126,10 @@ public class AiWebhookController {
 
         if (payload.getCategory() != null && !payload.getCategory().isBlank()) {
             categoryRepository.findByName(payload.getCategory())
-                    .ifPresent(c -> dto.setCategoryId(c.getId()));
+                    .ifPresentOrElse(
+                            c -> dto.setCategoryId(c.getId()),
+                            () -> log.warn("Ingestion: category '{}' not found, item created without category", payload.getCategory())
+                    );
         }
 
         if (payload.getTags() != null && !payload.getTags().isEmpty()) {
@@ -130,6 +149,9 @@ public class AiWebhookController {
         }
 
         Item created = itemService.createItem(dto);
+        log.info("Ingestion complete: itemId={} name='{}' storageId={} jobId={}",
+                created.getId(), created.getName(), job.getStorageId(), job.getId());
+
         attachCapturedImage(job.getImagePath(), created.getId());
 
         job.setStatus(AiJobEntity.Status.DONE);
@@ -148,20 +170,27 @@ public class AiWebhookController {
         job.setProposalData(proposalData);
         job.setProposalStatus(AiJobEntity.ProposalStatus.PENDING_REVIEW);
         job.setStatus(AiJobEntity.Status.DONE);
+        log.info("Analysis proposal ready: jobId={} type={} itemId={}", job.getId(), job.getJobType(), job.getItemId());
     }
 
     private void attachCapturedImage(String imagePath, Integer itemId) {
         if (imagePath == null || itemId == null) return;
         try {
             Path path = Path.of(imagePath);
-            if (!Files.exists(path)) return;
+            if (!Files.exists(path)) {
+                log.warn("Captured image not found at path '{}' for itemId={}", imagePath, itemId);
+                return;
+            }
 
             byte[] raw = Files.readAllBytes(path);
             String mimeType = detectMimeType(imagePath);
             byte[] data = imageCompressionService.compress(raw, mimeType);
 
             var item = itemRepository.findById(itemId).orElse(null);
-            if (item == null) return;
+            if (item == null) {
+                log.warn("Cannot attach image: item {} not found", itemId);
+                return;
+            }
 
             ImageEntity image = new ImageEntity();
             image.setData(data);
@@ -170,8 +199,9 @@ public class AiWebhookController {
             image.setDateModified(LocalDateTime.now());
             image.setItem(item);
             imageRepository.save(image);
+            log.debug("Captured image attached to itemId={} ({}B → {}B compressed)", itemId, raw.length, data.length);
         } catch (Exception e) {
-            // Non-fatal: item was created, image attachment failed
+            log.warn("Failed to attach captured image for itemId={}: {}", itemId, e.getMessage());
         }
     }
 

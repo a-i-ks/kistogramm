@@ -6,6 +6,8 @@ import de.iske.kistogramm.model.AiJobEntity;
 import de.iske.kistogramm.model.ImageEntity;
 import de.iske.kistogramm.repository.AiJobRepository;
 import de.iske.kistogramm.repository.ItemRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -23,6 +25,7 @@ import java.util.UUID;
 @Service
 public class AiQueueService {
 
+    private static final Logger log = LoggerFactory.getLogger(AiQueueService.class);
     private static final String QUEUE_KEY = "ai_jobs_queue";
 
     private final AiJobRepository aiJobRepository;
@@ -77,6 +80,8 @@ public class AiQueueService {
         pushToQueue(jobId, imagePath.toAbsolutePath().toString(),
                 audioPath != null ? audioPath.toAbsolutePath().toString() : null,
                 AiJobEntity.JobType.INGESTION, null, contextHint);
+        log.info("INGESTION job queued: jobId={} storageId={} roomId={} audio={} contextHint='{}'",
+                jobId, storageId, roomId, audioPath != null, contextHint);
         return job;
     }
 
@@ -116,6 +121,7 @@ public class AiQueueService {
         aiJobRepository.save(job);
 
         pushToQueue(jobId, imagePath.toAbsolutePath().toString(), null, jobType, itemId, null);
+        log.info("{} job queued: jobId={} itemId={}", jobType, jobId, itemId);
         return job;
     }
 
@@ -125,6 +131,9 @@ public class AiQueueService {
         if (job.getStatus() == AiJobEntity.Status.PENDING) {
             job.setStatus(AiJobEntity.Status.CANCELLED);
             aiJobRepository.save(job);
+            log.info("Job cancelled: jobId={}", jobId);
+        } else {
+            log.debug("cancelJob: job {} is in status {}, not cancellable", jobId, job.getStatus());
         }
     }
 
@@ -138,8 +147,10 @@ public class AiQueueService {
             payload.put("jobType", jobType.name());
             if (itemId != null) payload.put("itemId", itemId.toString());
             if (contextHint != null && !contextHint.isBlank()) payload.put("contextHint", contextHint);
-            redisTemplate.opsForList().leftPush(QUEUE_KEY, objectMapper.writeValueAsString(payload));
+            Long queueLen = redisTemplate.opsForList().leftPush(QUEUE_KEY, objectMapper.writeValueAsString(payload));
+            log.debug("Pushed job {} to Redis queue '{}', queue length now: {}", jobId, QUEUE_KEY, queueLen);
         } catch (JsonProcessingException e) {
+            log.error("Failed to serialize job payload for jobId={}: {}", jobId, e.getMessage());
             throw new RuntimeException("Failed to serialize job payload", e);
         }
     }

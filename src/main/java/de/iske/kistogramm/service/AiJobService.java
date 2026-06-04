@@ -9,6 +9,8 @@ import de.iske.kistogramm.model.TagEntity;
 import de.iske.kistogramm.repository.AiJobRepository;
 import de.iske.kistogramm.repository.ItemRepository;
 import de.iske.kistogramm.repository.TagRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +24,8 @@ import java.util.UUID;
 
 @Service
 public class AiJobService {
+
+    private static final Logger log = LoggerFactory.getLogger(AiJobService.class);
 
     private final AiJobRepository aiJobRepository;
     private final ItemRepository itemRepository;
@@ -80,12 +84,16 @@ public class AiJobService {
 
         switch (job.getStatus()) {
             case PENDING, PAUSED -> {
+                log.info("Job cancelled: jobId={} previousStatus={}", jobId, job.getStatus());
                 job.setStatus(AiJobEntity.Status.CANCELLED);
                 aiJobRepository.save(job);
             }
             case PROCESSING -> throw new IllegalArgumentException(
                     "Job is currently being processed and cannot be cancelled. Wait for completion or failure.");
-            case DONE, FAILED, CANCELLED -> aiJobRepository.delete(job);
+            case DONE, FAILED, CANCELLED -> {
+                log.info("Job deleted: jobId={} status={}", jobId, job.getStatus());
+                aiJobRepository.delete(job);
+            }
         }
     }
 
@@ -98,6 +106,7 @@ public class AiJobService {
         }
         job.setStatus(AiJobEntity.Status.PAUSED);
         aiJobRepository.save(job);
+        log.info("Job paused: jobId={} type={}", jobId, job.getJobType());
         return AiJobResponse.from(job);
     }
 
@@ -110,6 +119,7 @@ public class AiJobService {
         }
         job.setStatus(AiJobEntity.Status.PENDING);
         aiJobRepository.save(job);
+        log.info("Job resumed: jobId={} type={}", jobId, job.getJobType());
         return AiJobResponse.from(job);
     }
 
@@ -133,11 +143,13 @@ public class AiJobService {
             JsonNode data = objectMapper.readTree(dataJson);
             applyProposal(job, data);
         } catch (Exception e) {
+            log.error("Failed to apply proposal for jobId={} type={}: {}", jobId, job.getJobType(), e.getMessage());
             throw new IllegalArgumentException("Failed to apply proposal: " + e.getMessage(), e);
         }
 
         job.setProposalStatus(AiJobEntity.ProposalStatus.ACCEPTED);
         aiJobRepository.save(job);
+        log.info("Proposal accepted: jobId={} type={} itemId={}", jobId, job.getJobType(), job.getItemId());
         return AiJobResponse.from(job);
     }
 
@@ -153,6 +165,7 @@ public class AiJobService {
 
         job.setProposalStatus(AiJobEntity.ProposalStatus.REJECTED);
         aiJobRepository.save(job);
+        log.info("Proposal rejected: jobId={} type={} itemId={}", jobId, job.getJobType(), job.getItemId());
         return AiJobResponse.from(job);
     }
 
@@ -234,6 +247,7 @@ public class AiJobService {
         job.setStatus(AiJobEntity.Status.PROCESSING);
         job.setDateStarted(java.time.LocalDateTime.now());
         aiJobRepository.save(job);
+        log.info("Job processing started: jobId={} type={}", jobId, job.getJobType());
     }
 
     @Transactional
@@ -244,6 +258,7 @@ public class AiJobService {
                         .filter(j -> j.getStatus() != AiJobEntity.Status.PROCESSING)
                         .collect(java.util.stream.Collectors.toList());
         aiJobRepository.deleteAll(jobs);
+        log.info("Bulk-deleted {} job(s) with status={}", jobs.size(), statusStr != null ? statusStr : "all non-PROCESSING");
         return jobs.size();
     }
 

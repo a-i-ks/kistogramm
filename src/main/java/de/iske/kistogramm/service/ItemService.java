@@ -6,6 +6,8 @@ import de.iske.kistogramm.mapper.ImageMapper;
 import de.iske.kistogramm.mapper.ItemMapper;
 import de.iske.kistogramm.model.*;
 import de.iske.kistogramm.repository.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -16,6 +18,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class ItemService {
+
+    private static final Logger log = LoggerFactory.getLogger(ItemService.class);
 
     private final ItemRepository itemRepository;
     private final CategoryRepository categoryRepository;
@@ -129,11 +133,19 @@ public class ItemService {
         entity.setDateAdded(LocalDateTime.now());
         entity.setDateModified(LocalDateTime.now());
 
-        return itemMapper.toDto(itemRepository.save(entity));
+        Item created = itemMapper.toDto(itemRepository.save(entity));
+        log.info("Item created: id={} name='{}' categoryId={} storageId={}",
+                created.getId(), created.getName(), dto.getCategoryId(), dto.getStorageId());
+        return created;
     }
 
     public void deleteItem(Integer id) {
-        aiJobRepository.deleteAll(aiJobRepository.findByItemId(id));
+        var jobs = aiJobRepository.findByItemId(id);
+        if (!jobs.isEmpty()) {
+            log.info("Deleting {} AI job(s) for itemId={}", jobs.size(), id);
+            aiJobRepository.deleteAll(jobs);
+        }
+        log.info("Item deleted: id={}", id);
         itemRepository.deleteById(id);
     }
 
@@ -197,6 +209,7 @@ public class ItemService {
         }
 
         ItemEntity saved = itemRepository.save(entity);
+        log.info("Item updated: id={} name='{}'", id, saved.getName());
         return itemMapper.toDto(saved);
     }
 
@@ -268,12 +281,13 @@ public class ItemService {
                 image.setItem(item);
                 imageRepository.save(image);
             } catch (IOException e) {
+                log.error("Failed to read uploaded image file for itemId={}: {}", itemId, e.getMessage());
                 throw new RuntimeException("Failed to read uploaded file", e);
             }
         }
 
         item.setDateModified(LocalDateTime.now());
-
+        log.info("Uploaded {} image(s) to itemId={}", files.size(), itemId);
         return itemMapper.toDto(itemRepository.save(item));
     }
 
@@ -291,12 +305,13 @@ public class ItemService {
                 image.setReceiptItem(item);
                 imageRepository.save(image);
             } catch (IOException e) {
+                log.error("Failed to read uploaded receipt file for itemId={}: {}", itemId, e.getMessage());
                 throw new RuntimeException("Failed to read uploaded file", e);
             }
         }
 
         item.setDateModified(LocalDateTime.now());
-
+        log.info("Uploaded {} receipt(s) to itemId={}", files.size(), itemId);
         return itemMapper.toDto(itemRepository.save(item));
     }
 

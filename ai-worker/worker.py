@@ -106,8 +106,12 @@ if not check_ollama_health():
 
 
 def transcribe(audio_path: str) -> str:
+    log.info("Transcribing audio: %s", audio_path)
+    t0 = time.time()
     segments, _ = whisper_model.transcribe(audio_path, beam_size=5, language="de")
-    return " ".join(s.text for s in segments).strip()
+    result = " ".join(s.text for s in segments).strip()
+    log.info("Transcription done in %.1fs: '%s'", time.time() - t0, result[:120])
+    return result
 
 
 def analyze_with_vlm(image_path: str, transcript: str, context_hint: str = "", keep_alive=None) -> dict:
@@ -118,10 +122,12 @@ def analyze_with_vlm(image_path: str, transcript: str, context_hint: str = "", k
     payload = {"model": VLM_MODEL, "prompt": prompt, "images": [img_b64], "stream": False}
     if keep_alive is not None:
         payload["keep_alive"] = keep_alive
+    log.info("Calling VLM (%s) for ingestion (keep_alive=%s)", VLM_MODEL, keep_alive)
+    t0 = time.time()
     resp = httpx.post(f"{OLLAMA_HOST}/api/generate", json=payload, timeout=600)
     resp.raise_for_status()
     raw = resp.json()["response"].strip()
-    log.info("VLM raw response: %s", raw)
+    log.info("VLM response in %.1fs: %s", time.time() - t0, raw)
 
     result = _parse_json_response(raw)
 
@@ -140,10 +146,12 @@ def analyze_with_prompt(image_path: str, prompt: str, keep_alive=None) -> dict:
     payload = {"model": VLM_MODEL, "prompt": prompt, "images": [img_b64], "stream": False}
     if keep_alive is not None:
         payload["keep_alive"] = keep_alive
+    log.info("Calling VLM (%s) for analysis (keep_alive=%s)", VLM_MODEL, keep_alive)
+    t0 = time.time()
     resp = httpx.post(f"{OLLAMA_HOST}/api/generate", json=payload, timeout=600)
     resp.raise_for_status()
     raw = resp.json()["response"].strip()
-    log.info("Analysis raw response: %s", raw)
+    log.info("VLM analysis response in %.1fs: %s", time.time() - t0, raw)
     return _parse_json_response(raw)
 
 
@@ -170,6 +178,7 @@ def send_callback(job_id: str, job_type: str, result: dict = None, proposal_data
     headers = {"X-Webhook-Secret": WEBHOOK_SECRET, "Content-Type": "application/json"}
     resp = httpx.post(CALLBACK_URL, json=payload, headers=headers, timeout=30)
     resp.raise_for_status()
+    log.info("Callback sent for jobId=%s type=%s → HTTP %d", job_id, job_type, resp.status_code)
 
 
 ANALYSIS_PROMPTS = {

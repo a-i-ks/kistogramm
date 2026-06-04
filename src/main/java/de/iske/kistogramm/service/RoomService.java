@@ -12,6 +12,8 @@ import de.iske.kistogramm.model.ImageEntity;
 import de.iske.kistogramm.model.RoomEntity;
 import de.iske.kistogramm.repository.ImageRepository;
 import de.iske.kistogramm.repository.RoomRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import de.iske.kistogramm.service.ImageCompressionService;
@@ -23,6 +25,8 @@ import java.util.Optional;
 
 @Service
 public class RoomService {
+
+    private static final Logger log = LoggerFactory.getLogger(RoomService.class);
 
     private final RoomRepository roomRepository;
     private final ImageRepository imageRepository;
@@ -64,7 +68,9 @@ public class RoomService {
         RoomEntity entity = roomMapper.toEntity(room);
         entity.setDateAdded(LocalDateTime.now());
         entity.setDateModified(LocalDateTime.now());
-        return roomMapper.toDto(roomRepository.save(entity));
+        Room created = roomMapper.toDto(roomRepository.save(entity));
+        log.info("Room created: id={} name='{}'", created.getId(), created.getName());
+        return created;
     }
 
     public Room updateRoom(Integer id, Room updatedRoom) {
@@ -80,6 +86,7 @@ public class RoomService {
     }
 
     public void deleteRoom(Integer id) {
+        log.info("Room deleted: id={}", id);
         roomRepository.deleteById(id);
     }
 
@@ -119,6 +126,7 @@ public class RoomService {
 
             return roomMapper.toDto(roomRepository.save(room));
         } catch (IOException e) {
+            log.error("Failed to read uploaded image for roomId={}: {}", roomId, e.getMessage());
             throw new RuntimeException("Error reading uploaded file", e);
         }
     }

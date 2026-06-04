@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import de.iske.kistogramm.dto.AiJobResponse;
 import de.iske.kistogramm.model.AiJobEntity;
 import de.iske.kistogramm.service.AiQueueService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -18,6 +20,8 @@ import java.io.IOException;
 @RestController
 @RequestMapping("/api/ai")
 public class AiIngestionController {
+
+    private static final Logger log = LoggerFactory.getLogger(AiIngestionController.class);
 
     private final AiQueueService aiQueueService;
     private final ObjectMapper objectMapper;
@@ -47,12 +51,16 @@ public class AiIngestionController {
                 if (!title.isBlank() || !desc.isBlank()) {
                     contextHint = (title + ((!title.isBlank() && !desc.isBlank()) ? " – " : "") + desc).strip();
                 }
-            } catch (Exception ignored) {
-                // malformed metadata is not fatal
+            } catch (Exception e) {
+                log.warn("Malformed metadata JSON, ignoring: {}", e.getMessage());
             }
         }
 
+        log.info("Ingest request: imageSize={}B audio={} storageId={} roomId={} contextHint='{}'",
+                image.getSize(), audio != null && !audio.isEmpty(), storageId, roomId, contextHint);
+
         AiJobEntity job = aiQueueService.submitJob(image, audio, storageId, roomId, contextHint);
+        log.info("Ingest job submitted: jobId={}", job.getId());
         return ResponseEntity
                 .status(HttpStatus.ACCEPTED)
                 .body(AiJobResponse.from(job));
