@@ -81,6 +81,32 @@ services:
     networks:
       - kistonet
 
+  monitor:
+    build:
+      context: ./monitor
+      dockerfile: Dockerfile
+    container_name: kistogramm_monitor
+    ports:
+      - "8888:8888"
+    depends_on:
+      app:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    environment:
+      - APP_URL=http://app:8080
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - WEBHOOK_SECRET=${WEBHOOK_SECRET:-change-me-in-production}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ai_uploads:/uploads:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - kistonet
+
 volumes:
   pgdata:
   ai_uploads:

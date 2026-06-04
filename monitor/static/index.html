@@ -326,6 +326,9 @@
     pollStatus();
 
     // ── System metrics ─────────────────────────────────────────────────────
+    let _lastOllamaKey = null;
+    let _lastContainersKey = null;
+
     async function pollSystem() {
       try {
         const d = await fetch('/api/system').then(r => r.json());
@@ -358,6 +361,9 @@
     }
 
     function renderOllamaModels(models) {
+      const key = JSON.stringify(models);
+      if (key === _lastOllamaKey) return;
+      _lastOllamaKey = key;
       const el = document.getElementById('ollama-models');
       if (!models.length) { el.innerHTML = '<div style="color:var(--text-muted);font-size:12px;margin-top:4px">Keine Modelle geladen</div>'; return; }
       el.innerHTML = models.map(m => `
@@ -371,6 +377,9 @@
     }
 
     function renderContainerStats(containers) {
+      const key = JSON.stringify(containers);
+      if (key === _lastContainersKey) return;
+      _lastContainersKey = key;
       const el = document.getElementById('container-stats');
       el.innerHTML = Object.entries(containers).map(([name, s]) => {
         if (!s) return `<div class="sub-card"><div class="sub-card-title">${name}</div><div style="color:var(--text-muted);font-size:12px">Nicht erreichbar</div></div>`;
@@ -407,48 +416,99 @@
       }
     }
 
+    // Fingerprint of everything that affects row rendering, excluding live duration.
+    function jobStateKey(j) {
+      return `${j.status}|${j.proposalStatus}|${j.errorMessage}|${j.dateModified}|${j.imagePath}|${j.contextHint}|${j.whisperTranscript}|${j.audioPath}`;
+    }
+
+    function buildJobRowHtml(j, isSelected) {
+      const id = j.jobId;
+      const shortId = id.substring(0, 8) + '…';
+      const status = j.status || '';
+      const actions = buildActions(id, status);
+      const created = j.dateCreated ? fmtDate(j.dateCreated) : '–';
+      const modified = j.dateModified ? fmtDate(j.dateModified) : '–';
+
+      const thumb = j.imagePath
+        ? `<img src="/api/image?path=${encodeURIComponent(j.imagePath)}"
+             style="width:48px;height:48px;object-fit:cover;border-radius:4px;border:1px solid var(--border);display:block;flex-shrink:0"
+             onerror="this.style.display='none'" alt="">`
+        : '';
+      const transcriptHtml = j.whisperTranscript
+        ? `<span style="font-size:11px;color:#86efac;display:block;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(j.whisperTranscript)}">🎤 ${escHtml(j.whisperTranscript)}</span>`
+        : '';
+      const hintHtml = j.contextHint
+        ? `<span style="font-size:11px;color:#93c5fd;display:block;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(j.contextHint)}">💬 ${escHtml(j.contextHint)}</span>`
+        : '';
+      const dur = fmtDuration(j);
+      const durHtml = `<span class="job-duration" style="font-size:11px;color:var(--text-muted);display:block">${dur ? '⏱ ' + dur : ''}</span>`;
+      const preview = `<div style="display:flex;align-items:center;gap:8px">${thumb}<div>${hintHtml}${transcriptHtml}${durHtml}</div></div>`;
+
+      return `<tr class="job-row${isSelected ? ' selected' : ''}" data-job-id="${id}" onclick="selectJob('${id}')">
+        <td title="${id}" style="font-family:monospace;font-size:12px">${shortId}</td>
+        <td style="font-size:12px">${j.jobType || '–'}</td>
+        <td><span class="badge ${status}">${status}</span></td>
+        <td>${j.itemId ?? '–'}</td>
+        <td>${preview}</td>
+        <td style="white-space:nowrap">${created}</td>
+        <td style="white-space:nowrap">${modified}</td>
+        <td><div class="actions">${actions}</div></td>
+      </tr>`;
+    }
+
     function renderJobs(jobs) {
       const tbody = document.getElementById('jobs-body');
+
       if (!jobs.length) {
         tbody.innerHTML = '<tr><td colspan="8" style="color:var(--text-muted);text-align:center;padding:20px">Keine Jobs gefunden</td></tr>';
         return;
       }
-      tbody.innerHTML = jobs.map(j => {
-        const id = j.jobId;
-        const shortId = id.substring(0, 8) + '…';
-        const status = j.status || '';
-        const actions = buildActions(id, status);
-        const created = j.dateCreated ? fmtDate(j.dateCreated) : '–';
-        const modified = j.dateModified ? fmtDate(j.dateModified) : '–';
-        const selected = id === selectedJobId ? 'selected' : '';
 
-        const thumb = j.imagePath
-          ? `<img src="/api/image?path=${encodeURIComponent(j.imagePath)}"
-               style="width:48px;height:48px;object-fit:cover;border-radius:4px;border:1px solid var(--border);display:block;flex-shrink:0"
-               onerror="this.style.display='none'" alt="">`
-          : '';
-        const transcriptHtml = j.whisperTranscript
-          ? `<span style="font-size:11px;color:#86efac;display:block;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(j.whisperTranscript)}">🎤 ${escHtml(j.whisperTranscript)}</span>`
-          : '';
-        const hintHtml = j.contextHint
-          ? `<span style="font-size:11px;color:#93c5fd;display:block;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(j.contextHint)}">💬 ${escHtml(j.contextHint)}</span>`
-          : '';
-        const durHtml = fmtDuration(j)
-          ? `<span style="font-size:11px;color:var(--text-muted);display:block">⏱ ${fmtDuration(j)}</span>`
-          : '';
-        const preview = `<div style="display:flex;align-items:center;gap:8px">${thumb}<div>${hintHtml}${transcriptHtml}${durHtml}</div></div>`;
+      // Clear any placeholder row (no jobs / error / loading)
+      if (!tbody.querySelector('tr.job-row')) tbody.innerHTML = '';
 
-        return `<tr class="job-row ${selected}" onclick="selectJob('${id}')">
-          <td title="${id}" style="font-family:monospace;font-size:12px">${shortId}</td>
-          <td style="font-size:12px">${j.jobType || '–'}</td>
-          <td><span class="badge ${status}">${status}</span></td>
-          <td>${j.itemId ?? '–'}</td>
-          <td>${preview}</td>
-          <td style="white-space:nowrap">${created}</td>
-          <td style="white-space:nowrap">${modified}</td>
-          <td><div class="actions">${actions}</div></td>
-        </tr>`;
-      }).join('');
+      const existingRows = new Map();
+      Array.from(tbody.querySelectorAll('tr.job-row')).forEach(r => existingRows.set(r.dataset.jobId, r));
+
+      // Remove rows that are no longer in the result set
+      const newIdSet = new Set(jobs.map(j => j.jobId));
+      existingRows.forEach((row, id) => { if (!newIdSet.has(id)) row.remove(); });
+
+      jobs.forEach(job => {
+        const id = job.jobId;
+        const stateKey = jobStateKey(job);
+        const existingRow = existingRows.get(id);
+
+        if (existingRow && existingRow.dataset.stateKey === stateKey) {
+          // Row is unchanged – only patch the live duration counter in place
+          if (job.status === 'PROCESSING') {
+            const durEl = existingRow.querySelector('.job-duration');
+            if (durEl) {
+              const dur = fmtDuration(job);
+              durEl.textContent = dur ? `⏱ ${dur}` : '';
+            }
+          }
+          existingRow.classList.toggle('selected', id === selectedJobId);
+        } else {
+          // Create or replace the row
+          const temp = document.createElement('tbody');
+          temp.innerHTML = buildJobRowHtml(job, id === selectedJobId);
+          const newRow = temp.firstElementChild;
+          newRow.dataset.stateKey = stateKey;
+          if (existingRow) {
+            existingRow.replaceWith(newRow);
+          } else {
+            tbody.appendChild(newRow);
+          }
+        }
+      });
+
+      // Restore display order (only moves rows that are out of place)
+      for (let i = 0; i < jobs.length; i++) {
+        const desired = tbody.querySelector(`tr.job-row[data-job-id="${jobs[i].jobId}"]`);
+        const current = tbody.querySelectorAll('tr.job-row')[i];
+        if (desired && desired !== current) tbody.insertBefore(desired, current || null);
+      }
     }
 
     function buildActions(id, status) {
@@ -489,7 +549,7 @@
         const url = status ? `/api/jobs?status=${status}` : '/api/jobs';
         const resp = await fetch(url, { method: 'DELETE' });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const data = await resp.json();
+        await resp.json();
         closeDetail();
         await loadJobs();
       } catch (e) { alert('Fehler: ' + e); }
@@ -517,10 +577,7 @@
       const job = jobsData.find(j => j.jobId === id);
       if (!job) return;
 
-      // Update selected row styling
-      document.querySelectorAll('.job-row').forEach(r => r.classList.remove('selected'));
-      const rows = document.querySelectorAll('.job-row');
-      rows.forEach(r => { if (r.onclick.toString().includes(id)) r.classList.add('selected'); });
+      document.querySelectorAll('.job-row').forEach(r => r.classList.toggle('selected', r.dataset.jobId === id));
 
       const panel = document.getElementById('detail-panel');
       const content = document.getElementById('detail-content');

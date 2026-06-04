@@ -239,14 +239,21 @@ async def delete_job(job_id: str):
     return Response(status_code=resp.status_code)
 
 
-# ── Image serving ────────────────────────────────────────────────────────────
+# ── Image / Audio serving ────────────────────────────────────────────────────
+
+def _resolve_upload_path(path: str) -> Path:
+    """Resolve a path that may be absolute (/uploads/...) or relative."""
+    base = Path("/uploads").resolve()
+    # Paths stored in DB are absolute; accept them directly to avoid double-prefix
+    candidate = Path(path).resolve() if path.startswith("/") else (base / path).resolve()
+    if not str(candidate).startswith(str(base) + "/") and candidate != base:
+        raise HTTPException(status_code=400, detail="Invalid path")
+    return candidate
+
 
 @app.get("/api/audio")
 async def serve_audio(path: str):
-    base = Path("/uploads").resolve()
-    full_path = (base / path.lstrip("/")).resolve()
-    if not str(full_path).startswith(str(base) + "/") and full_path != base:
-        raise HTTPException(status_code=400, detail="Invalid path")
+    full_path = _resolve_upload_path(path)
     if not full_path.exists():
         raise HTTPException(status_code=404, detail="Audio not found")
     return FileResponse(str(full_path))
@@ -254,10 +261,7 @@ async def serve_audio(path: str):
 
 @app.get("/api/image")
 async def serve_image(path: str):
-    base = Path("/uploads").resolve()
-    full_path = (base / path.lstrip("/")).resolve()
-    if not str(full_path).startswith(str(base) + "/") and full_path != base:
-        raise HTTPException(status_code=400, detail="Invalid path")
+    full_path = _resolve_upload_path(path)
     if not full_path.exists():
         raise HTTPException(status_code=404, detail="Image not found")
     return FileResponse(str(full_path))
