@@ -23,13 +23,12 @@ QUEUE_KEY = "ai_jobs_queue"
 VLM_MODEL = os.environ.get("VLM_MODEL", "qwen2.5vl:7b")
 
 PROMPT_INGESTION_BASE = """\
-You are an inventory assistant.
+You are an inventory assistant. Your task is to identify the object in the image as precisely as possible.
 {context_block}
 Look at the image carefully and return a single valid JSON object with these fields:
-- "name": the specific name of the object you see in German (e.g. "blaue Sprühflasche", "Holzstuhl")
-- "description": 1-2 sentences in German describing color, shape, material, and condition
+- "name": the specific name of the object in German, as precise as possible (e.g. "blaue Sprühflasche", "Holzstuhl mit Armlehnen"). Use the user's input above to make the name more accurate.
+- "description": 1-2 sentences in German describing color, shape, material, and condition. Incorporate any details from the user's input.
 - "category": exactly one of: Elektronik, Kleidung, Moebelstueck, Lebensmittel, Pflanze, Sonstiges
-- "tags": list of 3-5 relevant lowercase tags in German
 - "quantity": number of items visible (integer)
 - "purchase_price": null
 
@@ -41,8 +40,11 @@ def build_ingestion_prompt(transcript: str, context_hint: str) -> str:
     if transcript:
         parts.append(f'The user described this item by voice: "{transcript}"')
     if context_hint:
-        parts.append(f'User-provided context hint: "{context_hint}"')
-    context_block = "\n".join(parts) + "\n" if parts else ""
+        parts.append(f'Additional user-provided info: "{context_hint}"')
+    if parts:
+        context_block = "The user has already provided the following information about this item — use it to improve your identification:\n" + "\n".join(parts) + "\n"
+    else:
+        context_block = ""
     return PROMPT_INGESTION_BASE.format(context_block=context_block)
 
 PROMPT_DIMENSION = """\
@@ -124,7 +126,6 @@ def analyze_with_vlm(image_path: str, transcript: str, context_hint: str = "") -
     result.setdefault("name", transcript)
     result.setdefault("description", "")
     result.setdefault("category", "Sonstiges")
-    result.setdefault("tags", [])
     result.setdefault("quantity", 1)
     result.setdefault("purchase_price", None)
     return result
