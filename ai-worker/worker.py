@@ -199,7 +199,7 @@ def _call_gemini(image_b64: str, prompt: str, api_key: str) -> str:
     t0 = time.time()
     client = genai.Client(api_key=api_key)
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-3.5-flash",
         contents=[
             genai_types.Part.from_text(text=prompt),
             genai_types.Part(inline_data=genai_types.Blob(
