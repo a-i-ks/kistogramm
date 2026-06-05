@@ -193,7 +193,7 @@ def _call_openai(image_b64: str, prompt: str, api_key: str) -> str:
 
 
 def _call_gemini(image_b64: str, prompt: str, api_key: str) -> str:
-    log.info("Calling Google Gemini 1.5 Flash")
+    log.info("Calling Google Gemini 2.0 Flash Lite")
     t0 = time.time()
     payload = {
         "contents": [{"parts": [
@@ -203,7 +203,7 @@ def _call_gemini(image_b64: str, prompt: str, api_key: str) -> str:
         "generationConfig": {"maxOutputTokens": 512},
     }
     resp = httpx.post(
-        f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}",
+        f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key={api_key}",
         json=payload,
         timeout=60,
     )
@@ -237,7 +237,7 @@ def _call_ollama(image_b64: str, prompt: str, cfg: dict, keep_alive=None) -> str
 
 # ── Gemini rate-limit tracking (Redis-backed) ─────────────────────────────────
 
-GEMINI_RPM_LIMIT = 15
+GEMINI_RPM_LIMIT = 30
 GEMINI_RPD_LIMIT = 1500
 
 

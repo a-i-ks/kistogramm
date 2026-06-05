@@ -306,7 +306,7 @@
             <select id="set-vlm-provider" onchange="applyProviderMode(this.value)">
               <option value="ollama">Ollama (lokal)</option>
               <option value="openai">OpenAI GPT-4o-mini</option>
-              <option value="gemini">Google Gemini 1.5 Flash (kostenlos: 15 RPM / 1.500/Tag)</option>
+              <option value="gemini">Google Gemini 2.0 Flash Lite (kostenlos: 30 RPM / 1.500/Tag)</option>
             </select>
           </div>
           <div id="section-api-keys" style="display:none;flex-direction:column;gap:10px">
@@ -494,7 +494,7 @@
       }
 
       if (!isOllama) {
-        const labels = { openai: 'OpenAI GPT-4o-mini', gemini: 'Google Gemini 1.5 Flash' };
+        const labels = { openai: 'OpenAI GPT-4o-mini', gemini: 'Google Gemini 2.0 Flash Lite' };
         document.getElementById('val-ai-provider').textContent = labels[provider] || provider;
         document.getElementById('card-ai-provider').className = 'card up';
       }
@@ -607,7 +607,7 @@
               </div>
               <div class="diag-card">
                 <div class="diag-label">Modell</div>
-                <div class="diag-value" style="font-size:12px">Gemini 1.5 Flash</div>
+                <div class="diag-value" style="font-size:12px">Gemini 2.0 Flash Lite</div>
                 <div class="diag-sub">Google AI Studio (kostenlos)</div>
               </div>
             </div>`;
