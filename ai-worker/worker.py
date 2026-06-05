@@ -5,6 +5,7 @@ import base64
 import logging
 import re
 import time
+import datetime
 import urllib.parse
 import redis
 import httpx
@@ -104,14 +105,14 @@ def _get_vlm_config() -> dict:
         resp.raise_for_status()
         _settings_cache = resp.json()
         _settings_cache_ts = now
-        log.info("Settings: model=%s device=%s numCtx=%s",
-                 _settings_cache.get("vlmModel"), _settings_cache.get("vlmDevice"),
-                 _settings_cache.get("vlmNumCtx"))
+        log.info("Settings: provider=%s model=%s device=%s",
+                 _settings_cache.get("vlmProvider", "ollama"),
+                 _settings_cache.get("vlmModel"), _settings_cache.get("vlmDevice"))
     except Exception as e:
         log.warning("Cannot fetch settings: %s — using cache/defaults", e)
         if _settings_cache is None:
-            _settings_cache = {"vlmModel": VLM_MODEL, "vlmDevice": "auto",
-                               "vlmNumCtx": 4096, "vlmNumThread": 4}
+            _settings_cache = {"vlmProvider": "ollama", "vlmModel": VLM_MODEL,
+                               "vlmDevice": "auto", "vlmNumCtx": 4096, "vlmNumThread": 4}
     return _settings_cache
 
 
@@ -151,8 +152,10 @@ log.info("Loading Whisper model (CPU)...")
 whisper_model = WhisperModel("base", device="cpu", compute_type="int8")
 log.info("Whisper model loaded.")
 
-if not check_ollama_health():
-    log.warning("OLLAMA_UNREACHABLE: Starting worker anyway, but AI jobs will fail until Ollama is available")
+cfg_init = _get_vlm_config()
+if cfg_init.get("vlmProvider", "ollama") == "ollama":
+    if not check_ollama_health():
+        log.warning("OLLAMA_UNREACHABLE: Starting worker anyway, but AI jobs will fail until Ollama is available")
 
 
 def transcribe(audio_path: str) -> str:
@@ -164,9 +167,53 @@ def transcribe(audio_path: str) -> str:
     return result
 
 
-def analyze_with_vlm(image_path: str, transcript: str, context_hint: str = "", keep_alive=None) -> dict:
-    img_b64 = _encode_image_for_vlm(image_path)
-    cfg = _get_vlm_config()
+# ── External API helpers ───────────────────────────────────────────────────────
+
+def _call_openai(image_b64: str, prompt: str, api_key: str) -> str:
+    log.info("Calling OpenAI GPT-4o-mini")
+    t0 = time.time()
+    payload = {
+        "model": "gpt-4o-mini",
+        "messages": [{"role": "user", "content": [
+            {"type": "text", "text": prompt},
+            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
+        ]}],
+        "max_tokens": 512,
+    }
+    resp = httpx.post(
+        "https://api.openai.com/v1/chat/completions",
+        json=payload,
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        timeout=60,
+    )
+    resp.raise_for_status()
+    raw = resp.json()["choices"][0]["message"]["content"].strip()
+    log.info("OpenAI response in %.1fs: %s", time.time() - t0, raw[:200])
+    return raw
+
+
+def _call_gemini(image_b64: str, prompt: str, api_key: str) -> str:
+    log.info("Calling Google Gemini 1.5 Flash")
+    t0 = time.time()
+    payload = {
+        "contents": [{"parts": [
+            {"text": prompt},
+            {"inlineData": {"mimeType": "image/jpeg", "data": image_b64}},
+        ]}],
+        "generationConfig": {"maxOutputTokens": 512},
+    }
+    resp = httpx.post(
+        f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}",
+        json=payload,
+        timeout=60,
+    )
+    resp.raise_for_status()
+    raw = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+    log.info("Gemini response in %.1fs: %s", time.time() - t0, raw[:200])
+    return raw
+
+
+def _call_ollama(image_b64: str, prompt: str, cfg: dict, keep_alive=None) -> str:
     model = cfg.get("vlmModel", VLM_MODEL)
     options: dict = {"num_ctx": cfg.get("vlmNumCtx", 4096)}
     device = cfg.get("vlmDevice", "auto")
@@ -176,19 +223,80 @@ def analyze_with_vlm(image_path: str, transcript: str, context_hint: str = "", k
     elif device == "gpu":
         options["num_gpu"] = 9999
 
-    prompt = build_ingestion_prompt(transcript, context_hint)
-    payload = {"model": model, "prompt": prompt, "images": [img_b64], "stream": False, "options": options}
+    payload = {"model": model, "prompt": prompt, "images": [image_b64], "stream": False, "options": options}
     if keep_alive is not None:
         payload["keep_alive"] = keep_alive
-    log.info("Calling VLM (%s) for ingestion (device=%s keep_alive=%s)", model, device, keep_alive)
+    log.info("Calling Ollama (%s) device=%s keep_alive=%s", model, device, keep_alive)
     t0 = time.time()
     resp = httpx.post(f"{OLLAMA_HOST}/api/generate", json=payload, timeout=600)
     resp.raise_for_status()
     raw = resp.json()["response"].strip()
-    log.info("VLM response in %.1fs: %s", time.time() - t0, raw)
+    log.info("Ollama response in %.1fs: %s", time.time() - t0, raw[:200])
+    return raw
 
+
+# ── Gemini rate-limit tracking (Redis-backed) ─────────────────────────────────
+
+GEMINI_RPM_LIMIT = 15
+GEMINI_RPD_LIMIT = 1500
+
+
+def _gemini_check_and_increment(r) -> None:
+    minute_key = f"gemini:rpm:{int(time.time() // 60)}"
+    day_key = f"gemini:rpd:{datetime.date.today().isoformat()}"
+
+    rpm = int(r.get(minute_key) or 0)
+    rpd = int(r.get(day_key) or 0)
+
+    if rpm >= GEMINI_RPM_LIMIT:
+        raise RuntimeError(f"GEMINI_RATE_LIMIT: {rpm}/{GEMINI_RPM_LIMIT} requests this minute — try again in a moment")
+    if rpd >= GEMINI_RPD_LIMIT:
+        raise RuntimeError(f"GEMINI_RATE_LIMIT: {rpd}/{GEMINI_RPD_LIMIT} requests today — daily limit reached")
+
+    pipe = r.pipeline()
+    pipe.incr(minute_key)
+    pipe.expire(minute_key, 120)
+    pipe.incr(day_key)
+    pipe.expire(day_key, 172800)
+    pipe.execute()
+    log.info("Gemini rate: %d+1/%d rpm, %d+1/%d rpd", rpm, GEMINI_RPM_LIMIT, rpd, GEMINI_RPD_LIMIT)
+
+
+def _openai_increment(r) -> None:
+    day_key = f"openai:rpd:{datetime.date.today().isoformat()}"
+    pipe = r.pipeline()
+    pipe.incr(day_key)
+    pipe.expire(day_key, 172800)
+    pipe.execute()
+
+
+# ── Core VLM call (routes to provider) ────────────────────────────────────────
+
+def _vlm_call(image_path: str, prompt: str, r, keep_alive=None) -> str:
+    img_b64 = _encode_image_for_vlm(image_path)
+    cfg = _get_vlm_config()
+    provider = cfg.get("vlmProvider", "ollama")
+
+    if provider == "openai":
+        api_key = cfg.get("openaiApiKey") or ""
+        if not api_key:
+            raise RuntimeError("OPENAI_KEY_MISSING: No OpenAI API key configured in settings")
+        _openai_increment(r)
+        return _call_openai(img_b64, prompt, api_key)
+    elif provider == "gemini":
+        api_key = cfg.get("geminiApiKey") or ""
+        if not api_key:
+            raise RuntimeError("GEMINI_KEY_MISSING: No Gemini API key configured in settings")
+        _gemini_check_and_increment(r)
+        return _call_gemini(img_b64, prompt, api_key)
+    else:
+        return _call_ollama(img_b64, prompt, cfg, keep_alive)
+
+
+def analyze_with_vlm(image_path: str, transcript: str, context_hint: str = "", r=None, keep_alive=None) -> dict:
+    prompt = build_ingestion_prompt(transcript, context_hint)
+    raw = _vlm_call(image_path, prompt, r, keep_alive=keep_alive)
     result = _parse_json_response(raw)
-
     result.setdefault("name", transcript)
     result.setdefault("description", "")
     result.setdefault("category", "Sonstiges")
@@ -197,27 +305,8 @@ def analyze_with_vlm(image_path: str, transcript: str, context_hint: str = "", k
     return result
 
 
-def analyze_with_prompt(image_path: str, prompt: str, keep_alive=None) -> dict:
-    img_b64 = _encode_image_for_vlm(image_path)
-    cfg = _get_vlm_config()
-    model = cfg.get("vlmModel", VLM_MODEL)
-    options: dict = {"num_ctx": cfg.get("vlmNumCtx", 4096)}
-    device = cfg.get("vlmDevice", "auto")
-    if device == "cpu":
-        options["num_gpu"] = 0
-        options["num_thread"] = cfg.get("vlmNumThread", 4)
-    elif device == "gpu":
-        options["num_gpu"] = 9999
-
-    payload = {"model": model, "prompt": prompt, "images": [img_b64], "stream": False, "options": options}
-    if keep_alive is not None:
-        payload["keep_alive"] = keep_alive
-    log.info("Calling VLM (%s) for analysis (device=%s keep_alive=%s)", model, device, keep_alive)
-    t0 = time.time()
-    resp = httpx.post(f"{OLLAMA_HOST}/api/generate", json=payload, timeout=600)
-    resp.raise_for_status()
-    raw = resp.json()["response"].strip()
-    log.info("VLM analysis response in %.1fs: %s", time.time() - t0, raw)
+def analyze_with_prompt(image_path: str, prompt: str, r=None, keep_alive=None) -> dict:
+    raw = _vlm_call(image_path, prompt, r, keep_alive=keep_alive)
     return _parse_json_response(raw)
 
 
@@ -270,12 +359,15 @@ def process_job(job: dict, r) -> None:
 
     notify_started(job_id)
 
-    if not check_ollama_health():
+    cfg = _get_vlm_config()
+    provider = cfg.get("vlmProvider", "ollama")
+
+    if provider == "ollama" and not check_ollama_health():
         raise RuntimeError(f"OLLAMA_UNREACHABLE: Ollama not available at {OLLAMA_HOST}, cannot process job {job_id}")
 
     queue_depth = r.llen(QUEUE_KEY)
     keep_alive = -1 if queue_depth > 0 else None
-    log.info("Queue depth after dequeue: %d — keep_alive=%s", queue_depth, keep_alive)
+    log.info("Provider=%s queue_depth=%d keep_alive=%s", provider, queue_depth, keep_alive)
 
     if job_type == "INGESTION":
         audio_path = job.get("audioPath", "")
@@ -283,14 +375,15 @@ def process_job(job: dict, r) -> None:
         log.info("Transcript for job %s: %s", job_id, transcript[:120])
 
         context_hint = job.get("contextHint", "")
-        result = analyze_with_vlm(job["imagePath"], transcript, context_hint, keep_alive=keep_alive)
+        result = analyze_with_vlm(job["imagePath"], transcript, context_hint,
+                                  r=r, keep_alive=keep_alive)
         log.info("VLM result for job %s: %s", job_id, result)
 
         send_callback(job_id, job_type="INGESTION", result=result, transcript=transcript)
 
     elif job_type in ANALYSIS_PROMPTS:
         prompt = ANALYSIS_PROMPTS[job_type]
-        proposal = analyze_with_prompt(job["imagePath"], prompt, keep_alive=keep_alive)
+        proposal = analyze_with_prompt(job["imagePath"], prompt, r=r, keep_alive=keep_alive)
         log.info("Proposal for job %s: %s", job_id, proposal)
 
         send_callback(job_id, job_type=job_type, proposal_data=json.dumps(proposal))

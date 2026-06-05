@@ -54,6 +54,15 @@ public class AppSettingsDto {
         this.imageQuality = imageQuality;
     }
 
+    @Pattern(regexp = "ollama|openai|gemini")
+    private String vlmProvider = "ollama";
+
+    @Size(max = 255)
+    private String openaiApiKey;
+
+    @Size(max = 255)
+    private String geminiApiKey;
+
     @NotBlank
     @Size(max = 100)
     private String vlmModel = "qwen2.5vl:7b";
@@ -68,6 +77,30 @@ public class AppSettingsDto {
     @Min(1)
     @Max(64)
     private int vlmNumThread = 4;
+
+    public String getVlmProvider() {
+        return vlmProvider;
+    }
+
+    public void setVlmProvider(String vlmProvider) {
+        this.vlmProvider = vlmProvider;
+    }
+
+    public String getOpenaiApiKey() {
+        return openaiApiKey;
+    }
+
+    public void setOpenaiApiKey(String openaiApiKey) {
+        this.openaiApiKey = openaiApiKey;
+    }
+
+    public String getGeminiApiKey() {
+        return geminiApiKey;
+    }
+
+    public void setGeminiApiKey(String geminiApiKey) {
+        this.geminiApiKey = geminiApiKey;
+    }
 
     public String getVlmModel() {
         return vlmModel;

@@ -234,6 +234,11 @@
           <div class="card-title">Ollama</div>
           <div class="card-status"><span class="dot"></span><span class="card-status-text">–</span></div>
         </div>
+        <div class="card unknown" id="card-ai-provider" style="display:none">
+          <div class="card-title">KI-Provider</div>
+          <div class="card-status"><span class="dot" style="background:var(--blue)"></span><span id="val-ai-provider">–</span></div>
+          <div class="card-sub" id="val-ai-provider-sub"></div>
+        </div>
       </div>
     </section>
 
@@ -261,13 +266,15 @@
         </div>
       </div>
 
-      <div id="ollama-models"></div>
+      <div id="ollama-models-wrap">
+        <div id="ollama-models"></div>
+      </div>
 
       <div class="sub-grid" id="container-stats"></div>
     </section>
 
-    <!-- GPU Diagnosis -->
-    <section>
+    <!-- GPU Diagnosis (Ollama only) -->
+    <section id="section-gpu-diagnosis">
       <h2>GPU-Diagnose</h2>
       <div id="diag-verdict"></div>
       <div class="diag-grid" id="diag-cards"></div>
@@ -280,6 +287,14 @@
       </div>
     </section>
 
+    <!-- External API Stats (OpenAI / Gemini) -->
+    <section id="section-api-stats" style="display:none">
+      <h2>API-Statistiken</h2>
+      <div id="api-stats-content">
+        <div style="color:var(--text-muted);font-size:13px">Lade…</div>
+      </div>
+    </section>
+
     <!-- Settings -->
     <section>
       <h2>Einstellungen</h2>
@@ -287,29 +302,49 @@
         <div class="settings-group">
           <h3>Modell-Konfiguration</h3>
           <div class="field">
-            <label for="set-vlm-model">Modell</label>
-            <select id="set-vlm-model">
-              <option value="qwen2.5vl:7b">qwen2.5vl:7b</option>
-              <option value="qwen2.5vl-ctx2048:latest">qwen2.5vl-ctx2048 (7b, ctx=2048)</option>
-              <option value="qwen2.5vl:3b">qwen2.5vl:3b</option>
-              <option value="moondream:latest">moondream</option>
+            <label for="set-vlm-provider">KI-Anbieter</label>
+            <select id="set-vlm-provider" onchange="applyProviderMode(this.value)">
+              <option value="ollama">Ollama (lokal)</option>
+              <option value="openai">OpenAI GPT-4o-mini</option>
+              <option value="gemini">Google Gemini 1.5 Flash (kostenlos: 15 RPM / 1.500/Tag)</option>
             </select>
           </div>
-          <div class="field">
-            <label>Gerät</label>
-            <div class="radio-group">
-              <label><input type="radio" name="vlm-device" value="auto"> Auto</label>
-              <label><input type="radio" name="vlm-device" value="gpu"> GPU</label>
-              <label><input type="radio" name="vlm-device" value="cpu"> CPU</label>
+          <div id="section-api-keys" style="display:none;flex-direction:column;gap:10px">
+            <div class="field" id="field-openai-key" style="display:none">
+              <label for="set-openai-key">OpenAI API-Key</label>
+              <input type="password" id="set-openai-key" placeholder="sk-…" autocomplete="off">
+            </div>
+            <div class="field" id="field-gemini-key" style="display:none">
+              <label for="set-gemini-key">Google AI Studio API-Key</label>
+              <input type="password" id="set-gemini-key" placeholder="AIza…" autocomplete="off">
             </div>
           </div>
-          <div class="field">
-            <label for="set-vlm-ctx">Context-Fenster (Token)</label>
-            <input type="number" id="set-vlm-ctx" min="512" max="131072" step="512" value="4096">
-          </div>
-          <div class="field">
-            <label for="set-vlm-threads">CPU-Threads</label>
-            <input type="number" id="set-vlm-threads" min="1" max="64" value="4">
+          <div id="section-ollama-model-config" style="display:flex;flex-direction:column;gap:10px">
+            <div class="field">
+              <label for="set-vlm-model">Modell</label>
+              <select id="set-vlm-model">
+                <option value="qwen2.5vl:7b">qwen2.5vl:7b</option>
+                <option value="qwen2.5vl-ctx2048:latest">qwen2.5vl-ctx2048 (7b, ctx=2048)</option>
+                <option value="qwen2.5vl:3b">qwen2.5vl:3b</option>
+                <option value="moondream:latest">moondream</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Gerät</label>
+              <div class="radio-group">
+                <label><input type="radio" name="vlm-device" value="auto"> Auto</label>
+                <label><input type="radio" name="vlm-device" value="gpu"> GPU</label>
+                <label><input type="radio" name="vlm-device" value="cpu"> CPU</label>
+              </div>
+            </div>
+            <div class="field">
+              <label for="set-vlm-ctx">Context-Fenster (Token)</label>
+              <input type="number" id="set-vlm-ctx" min="512" max="131072" step="512" value="4096">
+            </div>
+            <div class="field">
+              <label for="set-vlm-threads">CPU-Threads</label>
+              <input type="number" id="set-vlm-threads" min="1" max="64" value="4">
+            </div>
           </div>
         </div>
         <div class="settings-group">
@@ -434,9 +469,47 @@
 
   <script>
     // ── Settings ───────────────────────────────────────────────────────────
+    let currentProvider = 'ollama';
+
+    function applyProviderMode(provider) {
+      currentProvider = provider;
+      const isOllama = provider === 'ollama';
+
+      document.getElementById('card-ollama').style.display = isOllama ? '' : 'none';
+      document.getElementById('card-ai-provider').style.display = isOllama ? 'none' : '';
+      document.getElementById('section-gpu-diagnosis').style.display = isOllama ? '' : 'none';
+      document.getElementById('section-api-stats').style.display = isOllama ? 'none' : '';
+      document.getElementById('section-ollama-model-config').style.display = isOllama ? 'flex' : 'none';
+      document.getElementById('ollama-models-wrap').style.display = isOllama ? '' : 'none';
+
+      const apiKeysSection = document.getElementById('section-api-keys');
+      const openaiKeyField = document.getElementById('field-openai-key');
+      const geminiKeyField = document.getElementById('field-gemini-key');
+      if (!isOllama) {
+        apiKeysSection.style.display = 'flex';
+        openaiKeyField.style.display = provider === 'openai' ? '' : 'none';
+        geminiKeyField.style.display = provider === 'gemini' ? '' : 'none';
+      } else {
+        apiKeysSection.style.display = 'none';
+      }
+
+      if (!isOllama) {
+        const labels = { openai: 'OpenAI GPT-4o-mini', gemini: 'Google Gemini 1.5 Flash' };
+        document.getElementById('val-ai-provider').textContent = labels[provider] || provider;
+        document.getElementById('card-ai-provider').className = 'card up';
+      }
+    }
+
     async function loadSettings() {
       try {
         const s = await fetch('/api/settings').then(r => r.json());
+        const provider = s.vlmProvider || 'ollama';
+        document.getElementById('set-vlm-provider').value = provider;
+        applyProviderMode(provider);
+
+        if (s.openaiApiKey) document.getElementById('set-openai-key').value = s.openaiApiKey;
+        if (s.geminiApiKey) document.getElementById('set-gemini-key').value = s.geminiApiKey;
+
         const modelSel = document.getElementById('set-vlm-model');
         if ([...modelSel.options].some(o => o.value === s.vlmModel)) {
           modelSel.value = s.vlmModel;
@@ -465,7 +538,11 @@
 
     async function saveSettings() {
       const device = document.querySelector('input[name="vlm-device"]:checked')?.value ?? 'auto';
+      const provider = document.getElementById('set-vlm-provider').value;
+      const openaiKey = document.getElementById('set-openai-key').value.trim();
+      const geminiKey = document.getElementById('set-gemini-key').value.trim();
       const body = {
+        vlmProvider: provider,
         vlmModel: document.getElementById('set-vlm-model').value,
         vlmDevice: device,
         vlmNumCtx: parseInt(document.getElementById('set-vlm-ctx').value, 10),
@@ -479,10 +556,14 @@
         vlmImageMaxHeight: parseInt(document.getElementById('set-vlm-img-height').value, 10),
         vlmImageQuality: parseInt(document.getElementById('set-vlm-img-quality').value, 10),
       };
+      if (openaiKey) body.openaiApiKey = openaiKey;
+      if (geminiKey) body.geminiApiKey = geminiKey;
+
       const fb = document.getElementById('save-feedback');
       try {
         const resp = await fetch('/api/settings', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        applyProviderMode(provider);
         fb.className = 'save-feedback ok';
         fb.textContent = '✓ Gespeichert';
       } catch (e) {
@@ -493,6 +574,64 @@
     }
 
     loadSettings();
+
+    // ── External API Stats ─────────────────────────────────────────────────
+    function renderBar(used, limit) {
+      const pct = Math.min(100, Math.round((used / limit) * 100));
+      const cls = pct > 90 ? 'danger' : pct > 70 ? 'warn' : '';
+      return `<div class="progress-bar" style="margin-top:4px"><div class="progress-bar-fill ${cls}" style="width:${pct}%"></div></div>`;
+    }
+
+    async function pollExternalApiStats() {
+      if (currentProvider === 'ollama') return;
+      try {
+        const d = await fetch('/api/external-api-stats').then(r => r.json());
+        const el = document.getElementById('api-stats-content');
+        if (d.provider === 'gemini') {
+          const g = d.gemini;
+          const remMin = g.rpm_limit - g.requests_minute;
+          const remDay = g.rpd_limit - g.requests_today;
+          el.innerHTML = `
+            <div class="diag-grid" style="margin-bottom:0">
+              <div class="diag-card ${g.requests_minute >= g.rpm_limit ? 'bad' : 'ok'}">
+                <div class="diag-label">Anfragen diese Minute</div>
+                <div class="diag-value">${g.requests_minute} / ${g.rpm_limit}</div>
+                <div class="diag-sub">${remMin} verbleibend</div>
+                ${renderBar(g.requests_minute, g.rpm_limit)}
+              </div>
+              <div class="diag-card ${g.requests_today >= g.rpd_limit ? 'bad' : g.requests_today > g.rpd_limit * 0.9 ? 'warn' : 'ok'}">
+                <div class="diag-label">Anfragen heute</div>
+                <div class="diag-value">${g.requests_today} / ${g.rpd_limit}</div>
+                <div class="diag-sub">${remDay} verbleibend</div>
+                ${renderBar(g.requests_today, g.rpd_limit)}
+              </div>
+              <div class="diag-card">
+                <div class="diag-label">Modell</div>
+                <div class="diag-value" style="font-size:12px">Gemini 1.5 Flash</div>
+                <div class="diag-sub">Google AI Studio (kostenlos)</div>
+              </div>
+            </div>`;
+        } else if (d.provider === 'openai') {
+          const o = d.openai;
+          el.innerHTML = `
+            <div class="diag-grid" style="margin-bottom:0">
+              <div class="diag-card ok">
+                <div class="diag-label">Anfragen heute</div>
+                <div class="diag-value">${o.requests_today}</div>
+                <div class="diag-sub">Kein Hard-Limit</div>
+              </div>
+              <div class="diag-card">
+                <div class="diag-label">Modell</div>
+                <div class="diag-value" style="font-size:12px">GPT-4o-mini</div>
+                <div class="diag-sub">OpenAI API</div>
+              </div>
+            </div>`;
+        }
+      } catch (e) { console.warn('API stats failed', e); }
+    }
+
+    setInterval(pollExternalApiStats, 10000);
+    pollExternalApiStats();
 
     // ── GPU Diagnosis ──────────────────────────────────────────────────────
     async function loadDiagnosis() {
@@ -569,7 +708,7 @@
         setCard('backend', data.backend);
         setCard('db', data.db);
         setCard('redis', data.redis);
-        setCard('ollama', data.ollama);
+        if (currentProvider === 'ollama') setCard('ollama', data.ollama);
         const q = data.redis && data.redis.queue_depth != null
           ? `Queue: ${data.redis.queue_depth} Jobs` : '';
         document.getElementById('card-redis-queue').textContent = q;

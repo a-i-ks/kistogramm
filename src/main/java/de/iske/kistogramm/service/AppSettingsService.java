@@ -30,6 +30,9 @@ public class AppSettingsService {
         entity.setImageMaxWidth(dto.getImageMaxWidth());
         entity.setImageMaxHeight(dto.getImageMaxHeight());
         entity.setImageQuality(dto.getImageQuality());
+        entity.setVlmProvider(dto.getVlmProvider() != null ? dto.getVlmProvider() : "ollama");
+        entity.setOpenaiApiKey(dto.getOpenaiApiKey());
+        entity.setGeminiApiKey(dto.getGeminiApiKey());
         entity.setVlmModel(dto.getVlmModel());
         entity.setVlmDevice(dto.getVlmDevice());
         entity.setVlmNumCtx(dto.getVlmNumCtx());
@@ -52,6 +55,9 @@ public class AppSettingsService {
         dto.setImageMaxWidth(entity.getImageMaxWidth());
         dto.setImageMaxHeight(entity.getImageMaxHeight());
         dto.setImageQuality(entity.getImageQuality());
+        dto.setVlmProvider(entity.getVlmProvider() != null ? entity.getVlmProvider() : "ollama");
+        dto.setOpenaiApiKey(entity.getOpenaiApiKey());
+        dto.setGeminiApiKey(entity.getGeminiApiKey());
         dto.setVlmModel(entity.getVlmModel());
         dto.setVlmDevice(entity.getVlmDevice());
         dto.setVlmNumCtx(entity.getVlmNumCtx());

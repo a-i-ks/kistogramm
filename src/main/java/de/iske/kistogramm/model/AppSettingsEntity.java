@@ -16,6 +16,10 @@ public class AppSettingsEntity {
     private int imageMaxHeight = 1080;
     private int imageQuality = 85;
 
+    private String vlmProvider = "ollama";
+    private String openaiApiKey;
+    private String geminiApiKey;
+
     private String vlmModel = "qwen2.5vl:7b";
     private String vlmDevice = "auto";
     private int vlmNumCtx = 4096;
@@ -64,6 +68,30 @@ public class AppSettingsEntity {
 
     public void setImageQuality(int imageQuality) {
         this.imageQuality = imageQuality;
+    }
+
+    public String getVlmProvider() {
+        return vlmProvider;
+    }
+
+    public void setVlmProvider(String vlmProvider) {
+        this.vlmProvider = vlmProvider;
+    }
+
+    public String getOpenaiApiKey() {
+        return openaiApiKey;
+    }
+
+    public void setOpenaiApiKey(String openaiApiKey) {
+        this.openaiApiKey = openaiApiKey;
+    }
+
+    public String getGeminiApiKey() {
+        return geminiApiKey;
+    }
+
+    public void setGeminiApiKey(String geminiApiKey) {
+        this.geminiApiKey = geminiApiKey;
     }
 
     public String getVlmModel() {

@@ -242,6 +242,45 @@ async def delete_job(job_id: str):
     return Response(status_code=resp.status_code)
 
 
+# ── External API stats ───────────────────────────────────────────────────────
+
+@app.get("/api/external-api-stats")
+async def external_api_stats():
+    import datetime
+    try:
+        r = aioredis.Redis(host=REDIS_HOST, port=REDIS_PORT, socket_timeout=3)
+        minute_key = f"gemini:rpm:{int(__import__('time').time() // 60)}"
+        day_key = f"gemini:rpd:{datetime.date.today().isoformat()}"
+        openai_day_key = f"openai:rpd:{datetime.date.today().isoformat()}"
+        gemini_rpm, gemini_rpd, openai_rpd = await asyncio.gather(
+            r.get(minute_key), r.get(day_key), r.get(openai_day_key)
+        )
+        await r.aclose()
+    except Exception:
+        gemini_rpm = gemini_rpd = openai_rpd = None
+
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(f"{APP_URL}/api/settings", timeout=5.0)
+        settings = resp.json()
+        provider = settings.get("vlmProvider", "ollama")
+    except Exception:
+        provider = "ollama"
+
+    return {
+        "provider": provider,
+        "gemini": {
+            "requests_minute": int(gemini_rpm or 0),
+            "rpm_limit": 15,
+            "requests_today": int(gemini_rpd or 0),
+            "rpd_limit": 1500,
+        },
+        "openai": {
+            "requests_today": int(openai_rpd or 0),
+        },
+    }
+
+
 # ── Settings proxy ───────────────────────────────────────────────────────────
 
 @app.get("/api/settings")
