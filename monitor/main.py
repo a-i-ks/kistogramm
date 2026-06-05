@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import re
 from pathlib import Path
 
 import docker
@@ -20,6 +21,8 @@ REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://host.docker.internal:11434")
 WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "")
 QUEUE_KEY = "ai_jobs_queue"
+
+OLLAMA_LOG_FILE = Path(os.getenv("OLLAMA_LOG_FILE", "/var/log/ollama.log"))
 
 CONTAINER_MAP = {
     "app": "kistogramm_app",
@@ -288,6 +291,13 @@ async def serve_image(path: str):
 
 @app.get("/api/logs/stream")
 async def stream_logs(service: str):
+    if service == "ollama":
+        return StreamingResponse(
+            _stream_ollama_log(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+
     container_name = CONTAINER_MAP.get(service)
     if not container_name:
         raise HTTPException(status_code=400, detail=f"Unknown service: {service}")
@@ -330,5 +340,90 @@ async def stream_logs(service: str):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+async def _stream_ollama_log():
+    if not OLLAMA_LOG_FILE.exists():
+        yield f"data: [monitor] Log-Datei nicht gefunden: {OLLAMA_LOG_FILE} — Ollama-Service neu starten um Logging zu aktivieren.\n\n"
+        return
+
+    with OLLAMA_LOG_FILE.open(errors="replace") as f:
+        lines = f.read().splitlines()
+    for line in lines[-300:]:
+        if line.strip():
+            yield f"data: {line}\n\n"
+
+    pos = OLLAMA_LOG_FILE.stat().st_size
+    while True:
+        await asyncio.sleep(0.5)
+        try:
+            new_size = OLLAMA_LOG_FILE.stat().st_size
+            if new_size > pos:
+                with OLLAMA_LOG_FILE.open(errors="replace") as f:
+                    f.seek(pos)
+                    new_content = f.read()
+                pos = new_size
+                for line in new_content.splitlines():
+                    if line.strip():
+                        yield f"data: {line}\n\n"
+            elif new_size < pos:
+                pos = 0
+        except Exception as e:
+            yield f"data: [monitor] Lesefehler: {e}\n\n"
+            await asyncio.sleep(5)
+
+
+# ── GPU-Diagnose ─────────────────────────────────────────────────────────────
+
+_DIAG_KEYS = [
+    "starting runner", "gpu memory", "loading model", "flash attention",
+    "offload", "offloaded", "model weights", "kv cache", "compute graph",
+    "total memory", "llama runner started", "llama runner terminated",
+    "load_backend", "ggml_cuda_init", "found.*cuda device",
+]
+_DIAG_RE = re.compile("|".join(_DIAG_KEYS), re.IGNORECASE)
+
+
+@app.get("/api/gpu-diagnosis")
+async def gpu_diagnosis():
+    if not OLLAMA_LOG_FILE.exists():
+        return {"available": False, "events": [], "parsed": {}}
+
+    lines = OLLAMA_LOG_FILE.read_text(errors="replace").splitlines()
+
+    # Collect last load session (backwards from end)
+    session: list[str] = []
+    for line in reversed(lines[-2000:]):
+        if _DIAG_RE.search(line):
+            session.insert(0, line)
+        if re.search(r"starting runner", line, re.IGNORECASE) and session:
+            break
+
+    parsed: dict = {}
+    for line in lines[-2000:]:
+        def _extract(pattern: str) -> str | None:
+            m = re.search(pattern, line)
+            return m.group(1) if m else None
+
+        if "gpu memory" in line and "available=" in line:
+            parsed["gpu_available"] = _extract(r'available="([^"]+)"')
+            parsed["gpu_free"] = _extract(r'free="([^"]+)"')
+        if re.search(r'msg="model weights"', line):
+            parsed["weights_device"] = _extract(r'device=(\S+)')
+            parsed["weights_size"] = _extract(r'size="([^"]+)"')
+        if re.search(r'msg="kv cache"', line):
+            parsed["kvcache_device"] = _extract(r'device=(\S+)')
+            parsed["kvcache_size"] = _extract(r'size="([^"]+)"')
+        if re.search(r'msg="compute graph"', line):
+            parsed["compute_device"] = _extract(r'device=(\S+)')
+            parsed["compute_size"] = _extract(r'size="([^"]+)"')
+        if re.search(r'msg="total memory"', line):
+            parsed["total_required"] = _extract(r'size="([^"]+)"')
+        if re.search(r'offloaded \d+/\d+ layers', line):
+            parsed["layers_offloaded"] = _extract(r'offloaded (\d+/\d+ layers to \S+)')
+        if re.search(r'loading model.*requested=', line):
+            parsed["layers_requested"] = _extract(r'requested=(\S+)')
+
+    return {"available": True, "events": session[-50:], "parsed": parsed}
 
 

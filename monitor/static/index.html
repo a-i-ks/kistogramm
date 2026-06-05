@@ -110,6 +110,22 @@
     .save-feedback.ok { color: var(--green); }
     .save-feedback.err { color: var(--red); }
 
+    /* GPU diagnosis */
+    .diag-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; margin-bottom: 12px; }
+    .diag-card {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px;
+      border-left: 3px solid var(--grey);
+    }
+    .diag-card.ok { border-left-color: var(--green); }
+    .diag-card.warn { border-left-color: var(--yellow); }
+    .diag-card.bad { border-left-color: var(--red); }
+    .diag-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+    .diag-value { font-size: 14px; font-weight: 600; }
+    .diag-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .diag-verdict { padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 12px; }
+    .diag-verdict.cpu-warn { background: #422006; border: 1px solid #854d0e; color: var(--yellow); }
+    .diag-verdict.gpu-ok { background: #14532d; border: 1px solid #166534; color: var(--green); }
+
     /* Jobs table */
     .jobs-toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
     .jobs-toolbar select, .jobs-toolbar button {
@@ -250,6 +266,20 @@
       <div class="sub-grid" id="container-stats"></div>
     </section>
 
+    <!-- GPU Diagnosis -->
+    <section>
+      <h2>GPU-Diagnose</h2>
+      <div id="diag-verdict"></div>
+      <div class="diag-grid" id="diag-cards"></div>
+      <details style="margin-top:8px">
+        <summary style="font-size:12px;color:var(--text-muted);cursor:pointer">Ollama Lade-Events (letzter Start)</summary>
+        <div id="diag-events" style="margin-top:8px;font-family:monospace;font-size:11px;line-height:1.6;color:var(--text-muted);max-height:300px;overflow-y:auto;background:var(--surface2);padding:10px;border-radius:6px;border:1px solid var(--border)"></div>
+      </details>
+      <div style="margin-top:10px">
+        <button class="jobs-toolbar button" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:5px 10px;border-radius:5px;font-size:13px;cursor:pointer" onclick="loadDiagnosis()">Diagnose neu laden</button>
+      </div>
+    </section>
+
     <!-- Settings -->
     <section>
       <h2>Einstellungen</h2>
@@ -373,6 +403,7 @@
       <div class="log-tabs">
         <button class="log-tab active" onclick="switchLog('app', this)">app</button>
         <button class="log-tab" onclick="switchLog('ai-worker', this)">ai-worker</button>
+        <button class="log-tab" onclick="switchLog('ollama', this)">ollama</button>
         <button class="log-tab" onclick="switchLog('db', this)">db</button>
         <button class="log-tab" onclick="switchLog('redis', this)">redis</button>
       </div>
@@ -433,6 +464,67 @@
     }
 
     loadSettings();
+
+    // ── GPU Diagnosis ──────────────────────────────────────────────────────
+    async function loadDiagnosis() {
+      try {
+        const d = await fetch('/api/gpu-diagnosis').then(r => r.json());
+        const verdict = document.getElementById('diag-verdict');
+        const cards = document.getElementById('diag-cards');
+        const events = document.getElementById('diag-events');
+
+        if (!d.available) {
+          verdict.innerHTML = '<div class="diag-verdict cpu-warn">⚠ Ollama-Log nicht verfügbar — bitte Ollama-Service mit neuer Konfiguration neu starten.</div>';
+          cards.innerHTML = '';
+          return;
+        }
+
+        const p = d.parsed || {};
+        const onGpu = p.weights_device === 'GPU';
+        const computeOnCpu = p.compute_device === 'CPU';
+
+        // Verdict banner
+        if (onGpu) {
+          verdict.innerHTML = '<div class="diag-verdict gpu-ok">✓ Modell läuft auf GPU</div>';
+        } else if (p.weights_device) {
+          const reason = computeOnCpu && p.compute_size
+            ? `Compute-Graph (${p.compute_size}) überschreitet verfügbaren VRAM (${p.gpu_available || '?'}) → kein GPU-Offloading möglich.`
+            : 'Modell läuft auf CPU.';
+          verdict.innerHTML = `<div class="diag-verdict cpu-warn">⚠ CPU-Betrieb: ${reason}</div>`;
+        } else {
+          verdict.innerHTML = '<div class="diag-verdict cpu-warn">⚠ Noch keine Lade-Events gefunden — bitte einen Job starten.</div>';
+        }
+
+        // Metric cards
+        const mkCard = (label, value, sub, state) =>
+          `<div class="diag-card ${state}"><div class="diag-label">${label}</div><div class="diag-value">${value || '–'}</div>${sub ? `<div class="diag-sub">${sub}</div>` : ''}</div>`;
+
+        cards.innerHTML = [
+          mkCard('GPU verfügbar', p.gpu_available, `frei: ${p.gpu_free || '–'}`, p.gpu_available ? 'ok' : 'warn'),
+          mkCard('Modellgewichte', p.weights_size, `Gerät: ${p.weights_device || '–'}`, p.weights_device === 'GPU' ? 'ok' : p.weights_device ? 'bad' : ''),
+          mkCard('KV-Cache', p.kvcache_size, `Gerät: ${p.kvcache_device || '–'}`, p.kvcache_device === 'GPU' ? 'ok' : p.kvcache_device ? 'warn' : ''),
+          mkCard('Compute-Graph', p.compute_size, `Gerät: ${p.compute_device || '–'} — HAUPTVERURSACHER`, p.compute_device === 'GPU' ? 'ok' : p.compute_device ? 'bad' : ''),
+          mkCard('Gesamt benötigt', p.total_required, `vs. GPU verfügbar: ${p.gpu_available || '–'}`, ''),
+          mkCard('GPU-Layer', p.layers_offloaded || '–', `angefordert: ${p.layers_requested || '–'}`, p.layers_offloaded?.startsWith('0') ? 'bad' : p.layers_offloaded ? 'ok' : ''),
+        ].join('');
+
+        // Events log
+        if (d.events?.length) {
+          events.innerHTML = d.events.map(line => {
+            const isKey = /compute graph|offloaded|model weights|gpu memory|total memory/i.test(line);
+            const color = isKey ? (line.includes('CPU') ? 'var(--yellow)' : 'var(--green)') : 'var(--text-muted)';
+            return `<div style="color:${color}">${escHtml(line)}</div>`;
+          }).join('');
+        } else {
+          events.innerHTML = '<div style="color:var(--text-muted)">Keine Events gefunden.</div>';
+        }
+      } catch (e) {
+        document.getElementById('diag-verdict').innerHTML = `<div class="diag-verdict cpu-warn">Fehler: ${e}</div>`;
+      }
+    }
+
+    loadDiagnosis();
+    setInterval(loadDiagnosis, 30000);
 
     // ── Clock ──────────────────────────────────────────────────────────────
     function updateClock() {

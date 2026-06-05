@@ -103,6 +103,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ai_uploads:/uploads:ro
+      - /var/log/ollama.log:/var/log/ollama.log:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
