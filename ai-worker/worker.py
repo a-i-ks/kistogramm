@@ -1,3 +1,4 @@
+import io
 import os
 import json
 import base64
@@ -7,6 +8,7 @@ import time
 import urllib.parse
 import redis
 import httpx
+from PIL import Image
 from faster_whisper import WhisperModel
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -113,6 +115,28 @@ def _get_vlm_config() -> dict:
     return _settings_cache
 
 
+def _encode_image_for_vlm(image_path: str) -> str:
+    cfg = _get_vlm_config()
+    if not cfg.get("vlmImageCompressionEnabled", True):
+        with open(image_path, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+
+    max_w = cfg.get("vlmImageMaxWidth", 672)
+    max_h = cfg.get("vlmImageMaxHeight", 448)
+    quality = cfg.get("vlmImageQuality", 85)
+
+    img = Image.open(image_path).convert("RGB")
+    orig_w, orig_h = img.size
+    img.thumbnail((max_w, max_h), Image.LANCZOS)
+    new_w, new_h = img.size
+
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=quality)
+    encoded = base64.b64encode(buf.getvalue()).decode()
+    log.info("VLM image: %dx%d → %dx%d (%.1f KB)", orig_w, orig_h, new_w, new_h, len(buf.getvalue()) / 1024)
+    return encoded
+
+
 def check_ollama_health() -> bool:
     try:
         resp = httpx.get(f"{OLLAMA_HOST}/api/tags", timeout=5)
@@ -141,9 +165,7 @@ def transcribe(audio_path: str) -> str:
 
 
 def analyze_with_vlm(image_path: str, transcript: str, context_hint: str = "", keep_alive=None) -> dict:
-    with open(image_path, "rb") as f:
-        img_b64 = base64.b64encode(f.read()).decode()
-
+    img_b64 = _encode_image_for_vlm(image_path)
     cfg = _get_vlm_config()
     model = cfg.get("vlmModel", VLM_MODEL)
     options: dict = {"num_ctx": cfg.get("vlmNumCtx", 4096)}
@@ -176,9 +198,7 @@ def analyze_with_vlm(image_path: str, transcript: str, context_hint: str = "", k
 
 
 def analyze_with_prompt(image_path: str, prompt: str, keep_alive=None) -> dict:
-    with open(image_path, "rb") as f:
-        img_b64 = base64.b64encode(f.read()).decode()
-
+    img_b64 = _encode_image_for_vlm(image_path)
     cfg = _get_vlm_config()
     model = cfg.get("vlmModel", VLM_MODEL)
     options: dict = {"num_ctx": cfg.get("vlmNumCtx", 4096)}

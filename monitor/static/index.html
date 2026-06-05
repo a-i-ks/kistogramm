@@ -313,7 +313,7 @@
           </div>
         </div>
         <div class="settings-group">
-          <h3>Bildkomprimierung</h3>
+          <h3>Bildkomprimierung (Speicher)</h3>
           <div class="field">
             <div class="checkbox-row">
               <input type="checkbox" id="set-img-enabled">
@@ -331,6 +331,27 @@
           <div class="field">
             <label for="set-img-quality">JPEG-Qualität (1–100)</label>
             <input type="number" id="set-img-quality" min="1" max="100" value="85">
+          </div>
+        </div>
+        <div class="settings-group">
+          <h3>Bildkomprimierung (KI-Erkennung)</h3>
+          <div class="field">
+            <div class="checkbox-row">
+              <input type="checkbox" id="set-vlm-img-enabled">
+              <label for="set-vlm-img-enabled">Komprimierung vor KI-Aufruf aktiviert</label>
+            </div>
+          </div>
+          <div class="field">
+            <label for="set-vlm-img-width">Max. Breite (px)</label>
+            <input type="number" id="set-vlm-img-width" min="64" max="4096" value="672">
+          </div>
+          <div class="field">
+            <label for="set-vlm-img-height">Max. Höhe (px)</label>
+            <input type="number" id="set-vlm-img-height" min="64" max="4096" value="448">
+          </div>
+          <div class="field">
+            <label for="set-vlm-img-quality">JPEG-Qualität (1–100)</label>
+            <input type="number" id="set-vlm-img-quality" min="1" max="100" value="85">
           </div>
         </div>
       </div>
@@ -433,6 +454,10 @@
         document.getElementById('set-img-width').value = s.imageMaxWidth ?? 1920;
         document.getElementById('set-img-height').value = s.imageMaxHeight ?? 1080;
         document.getElementById('set-img-quality').value = s.imageQuality ?? 85;
+        document.getElementById('set-vlm-img-enabled').checked = s.vlmImageCompressionEnabled !== false;
+        document.getElementById('set-vlm-img-width').value = s.vlmImageMaxWidth ?? 672;
+        document.getElementById('set-vlm-img-height').value = s.vlmImageMaxHeight ?? 448;
+        document.getElementById('set-vlm-img-quality').value = s.vlmImageQuality ?? 85;
       } catch (e) {
         console.warn('Could not load settings', e);
       }
@@ -449,6 +474,10 @@
         imageMaxWidth: parseInt(document.getElementById('set-img-width').value, 10),
         imageMaxHeight: parseInt(document.getElementById('set-img-height').value, 10),
         imageQuality: parseInt(document.getElementById('set-img-quality').value, 10),
+        vlmImageCompressionEnabled: document.getElementById('set-vlm-img-enabled').checked,
+        vlmImageMaxWidth: parseInt(document.getElementById('set-vlm-img-width').value, 10),
+        vlmImageMaxHeight: parseInt(document.getElementById('set-vlm-img-height').value, 10),
+        vlmImageQuality: parseInt(document.getElementById('set-vlm-img-quality').value, 10),
       };
       const fb = document.getElementById('save-feedback');
       try {

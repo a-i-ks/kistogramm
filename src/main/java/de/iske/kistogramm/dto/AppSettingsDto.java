@@ -100,4 +100,50 @@ public class AppSettingsDto {
     public void setVlmNumThread(int vlmNumThread) {
         this.vlmNumThread = vlmNumThread;
     }
+
+    private boolean vlmImageCompressionEnabled = true;
+
+    @Min(64)
+    @Max(4096)
+    private int vlmImageMaxWidth = 672;
+
+    @Min(64)
+    @Max(4096)
+    private int vlmImageMaxHeight = 448;
+
+    @Min(1)
+    @Max(100)
+    private int vlmImageQuality = 85;
+
+    public boolean isVlmImageCompressionEnabled() {
+        return vlmImageCompressionEnabled;
+    }
+
+    public void setVlmImageCompressionEnabled(boolean vlmImageCompressionEnabled) {
+        this.vlmImageCompressionEnabled = vlmImageCompressionEnabled;
+    }
+
+    public int getVlmImageMaxWidth() {
+        return vlmImageMaxWidth;
+    }
+
+    public void setVlmImageMaxWidth(int vlmImageMaxWidth) {
+        this.vlmImageMaxWidth = vlmImageMaxWidth;
+    }
+
+    public int getVlmImageMaxHeight() {
+        return vlmImageMaxHeight;
+    }
+
+    public void setVlmImageMaxHeight(int vlmImageMaxHeight) {
+        this.vlmImageMaxHeight = vlmImageMaxHeight;
+    }
+
+    public int getVlmImageQuality() {
+        return vlmImageQuality;
+    }
+
+    public void setVlmImageQuality(int vlmImageQuality) {
+        this.vlmImageQuality = vlmImageQuality;
+    }
 }

@@ -21,6 +21,11 @@ public class AppSettingsEntity {
     private int vlmNumCtx = 4096;
     private int vlmNumThread = 4;
 
+    private boolean vlmImageCompressionEnabled = true;
+    private int vlmImageMaxWidth = 672;
+    private int vlmImageMaxHeight = 448;
+    private int vlmImageQuality = 85;
+
     public Integer getId() {
         return id;
     }
@@ -91,5 +96,37 @@ public class AppSettingsEntity {
 
     public void setVlmNumThread(int vlmNumThread) {
         this.vlmNumThread = vlmNumThread;
+    }
+
+    public boolean isVlmImageCompressionEnabled() {
+        return vlmImageCompressionEnabled;
+    }
+
+    public void setVlmImageCompressionEnabled(boolean vlmImageCompressionEnabled) {
+        this.vlmImageCompressionEnabled = vlmImageCompressionEnabled;
+    }
+
+    public int getVlmImageMaxWidth() {
+        return vlmImageMaxWidth;
+    }
+
+    public void setVlmImageMaxWidth(int vlmImageMaxWidth) {
+        this.vlmImageMaxWidth = vlmImageMaxWidth;
+    }
+
+    public int getVlmImageMaxHeight() {
+        return vlmImageMaxHeight;
+    }
+
+    public void setVlmImageMaxHeight(int vlmImageMaxHeight) {
+        this.vlmImageMaxHeight = vlmImageMaxHeight;
+    }
+
+    public int getVlmImageQuality() {
+        return vlmImageQuality;
+    }
+
+    public void setVlmImageQuality(int vlmImageQuality) {
+        this.vlmImageQuality = vlmImageQuality;
     }
 }
