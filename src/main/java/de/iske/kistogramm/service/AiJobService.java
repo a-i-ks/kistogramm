@@ -88,8 +88,12 @@ public class AiJobService {
                 job.setStatus(AiJobEntity.Status.CANCELLED);
                 aiJobRepository.save(job);
             }
-            case PROCESSING -> throw new IllegalArgumentException(
-                    "Job is currently being processed and cannot be cancelled. Wait for completion or failure.");
+            case PROCESSING -> {
+                log.warn("Force-cancelling PROCESSING job: jobId={} (worker may still be running)", jobId);
+                job.setStatus(AiJobEntity.Status.FAILED);
+                job.setErrorMessage("Manuell abgebrochen");
+                aiJobRepository.save(job);
+            }
             case DONE, FAILED, CANCELLED -> {
                 log.info("Job deleted: jobId={} status={}", jobId, job.getStatus());
                 aiJobRepository.delete(job);

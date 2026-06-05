@@ -792,13 +792,19 @@
     async function jobAction(evt, action, id) {
       evt.stopPropagation();
       try {
+        let resp;
         if (action === 'pause') {
-          await fetch(`/api/jobs/${id}/pause`, { method: 'POST' });
+          resp = await fetch(`/api/jobs/${id}/pause`, { method: 'POST' });
         } else if (action === 'resume') {
-          await fetch(`/api/jobs/${id}/resume`, { method: 'POST' });
+          resp = await fetch(`/api/jobs/${id}/resume`, { method: 'POST' });
         } else {
-          await fetch(`/api/jobs/${id}`, { method: 'DELETE' });
-          if (selectedJobId === id) closeDetail();
+          resp = await fetch(`/api/jobs/${id}`, { method: 'DELETE' });
+          if (resp.ok && selectedJobId === id) closeDetail();
+        }
+        if (!resp.ok) {
+          const body = await resp.json().catch(() => ({}));
+          alert(`Fehler ${resp.status}: ${body.message || resp.statusText}`);
+          return;
         }
         await loadJobs();
       } catch (e) { alert('Fehler: ' + e); }
