@@ -9,6 +9,8 @@ import datetime
 import urllib.parse
 import redis
 import httpx
+from google import genai
+from google.genai import types as genai_types
 from PIL import Image
 from faster_whisper import WhisperModel
 
@@ -193,22 +195,24 @@ def _call_openai(image_b64: str, prompt: str, api_key: str) -> str:
 
 
 def _call_gemini(image_b64: str, prompt: str, api_key: str) -> str:
-    log.info("Calling Google Gemini 2.0 Flash Lite")
+    log.info("Calling Google Gemini 2.0 Flash Lite (SDK)")
     t0 = time.time()
-    payload = {
-        "contents": [{"parts": [
-            {"text": prompt},
-            {"inlineData": {"mimeType": "image/jpeg", "data": image_b64}},
-        ]}],
-        "generationConfig": {"maxOutputTokens": 512},
-    }
-    resp = httpx.post(
-        f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key={api_key}",
-        json=payload,
-        timeout=60,
+    client = genai.Client(api_key=api_key)
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=[
+            genai_types.Part.from_text(text=prompt),
+            genai_types.Part(inline_data=genai_types.Blob(
+                mime_type="image/jpeg",
+                data=base64.b64decode(image_b64),
+            )),
+        ],
+        config=genai_types.GenerateContentConfig(
+            response_mime_type="application/json",
+            max_output_tokens=512,
+        ),
     )
-    resp.raise_for_status()
-    raw = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+    raw = response.text.strip()
     log.info("Gemini response in %.1fs: %s", time.time() - t0, raw[:200])
     return raw
 
