@@ -76,6 +76,7 @@ services:
       - CALLBACK_URL=http://app:8080/api/ai/webhook/result
       - WEBHOOK_SECRET=${WEBHOOK_SECRET:-change-me-in-production}
       - OLLAMA_HOST=http://host.docker.internal:11434
+      - VLM_MODEL=qwen2.5vl:7b
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:

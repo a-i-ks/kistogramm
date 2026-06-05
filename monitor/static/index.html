@@ -82,6 +82,34 @@
     .gpu-badge.gpu { background: #1e3a8a; color: #93c5fd; }
     .gpu-badge.cpu { background: #3f3f46; color: #a1a1aa; }
 
+    /* Settings */
+    .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 680px) { .settings-grid { grid-template-columns: 1fr; } }
+    .settings-group { display: flex; flex-direction: column; gap: 10px; }
+    .settings-group h3 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    .field label { font-size: 12px; color: var(--text-muted); }
+    .field input[type=number], .field select {
+      background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+      padding: 6px 10px; border-radius: 5px; font-size: 13px; width: 100%;
+    }
+    .field input[type=number]:focus, .field select:focus { outline: none; border-color: var(--blue); }
+    .radio-group { display: flex; gap: 16px; }
+    .radio-group label { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
+    .radio-group input[type=radio] { accent-color: var(--blue); }
+    .checkbox-row { display: flex; align-items: center; gap: 8px; }
+    .checkbox-row input[type=checkbox] { accent-color: var(--blue); width: 15px; height: 15px; }
+    .checkbox-row label { font-size: 13px; cursor: pointer; }
+    .settings-footer { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+    .btn-save {
+      background: var(--blue); border: none; color: #fff;
+      padding: 7px 18px; border-radius: 5px; font-size: 13px; cursor: pointer; font-weight: 500;
+    }
+    .btn-save:hover { opacity: 0.85; }
+    .save-feedback { font-size: 12px; }
+    .save-feedback.ok { color: var(--green); }
+    .save-feedback.err { color: var(--red); }
+
     /* Jobs table */
     .jobs-toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
     .jobs-toolbar select, .jobs-toolbar button {
@@ -222,6 +250,66 @@
       <div class="sub-grid" id="container-stats"></div>
     </section>
 
+    <!-- Settings -->
+    <section>
+      <h2>Einstellungen</h2>
+      <div class="settings-grid">
+        <div class="settings-group">
+          <h3>Modell-Konfiguration</h3>
+          <div class="field">
+            <label for="set-vlm-model">Modell</label>
+            <select id="set-vlm-model">
+              <option value="qwen2.5vl:7b">qwen2.5vl:7b</option>
+              <option value="qwen2.5vl-ctx2048:latest">qwen2.5vl-ctx2048 (7b, ctx=2048)</option>
+              <option value="qwen2.5vl:3b">qwen2.5vl:3b</option>
+              <option value="moondream:latest">moondream</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Gerät</label>
+            <div class="radio-group">
+              <label><input type="radio" name="vlm-device" value="auto"> Auto</label>
+              <label><input type="radio" name="vlm-device" value="gpu"> GPU</label>
+              <label><input type="radio" name="vlm-device" value="cpu"> CPU</label>
+            </div>
+          </div>
+          <div class="field">
+            <label for="set-vlm-ctx">Context-Fenster (Token)</label>
+            <input type="number" id="set-vlm-ctx" min="512" max="131072" step="512" value="4096">
+          </div>
+          <div class="field">
+            <label for="set-vlm-threads">CPU-Threads</label>
+            <input type="number" id="set-vlm-threads" min="1" max="64" value="4">
+          </div>
+        </div>
+        <div class="settings-group">
+          <h3>Bildkomprimierung</h3>
+          <div class="field">
+            <div class="checkbox-row">
+              <input type="checkbox" id="set-img-enabled">
+              <label for="set-img-enabled">Komprimierung aktiviert</label>
+            </div>
+          </div>
+          <div class="field">
+            <label for="set-img-width">Max. Breite (px)</label>
+            <input type="number" id="set-img-width" min="1" max="10000" value="1920">
+          </div>
+          <div class="field">
+            <label for="set-img-height">Max. Höhe (px)</label>
+            <input type="number" id="set-img-height" min="1" max="10000" value="1080">
+          </div>
+          <div class="field">
+            <label for="set-img-quality">JPEG-Qualität (1–100)</label>
+            <input type="number" id="set-img-quality" min="1" max="100" value="85">
+          </div>
+        </div>
+      </div>
+      <div class="settings-footer">
+        <button class="btn-save" onclick="saveSettings()">Einstellungen speichern</button>
+        <span class="save-feedback" id="save-feedback"></span>
+      </div>
+    </section>
+
     <!-- AI Jobs -->
     <section>
       <h2>AI Jobs</h2>
@@ -293,6 +381,59 @@
   </main>
 
   <script>
+    // ── Settings ───────────────────────────────────────────────────────────
+    async function loadSettings() {
+      try {
+        const s = await fetch('/api/settings').then(r => r.json());
+        const modelSel = document.getElementById('set-vlm-model');
+        if ([...modelSel.options].some(o => o.value === s.vlmModel)) {
+          modelSel.value = s.vlmModel;
+        } else {
+          const opt = document.createElement('option');
+          opt.value = s.vlmModel; opt.textContent = s.vlmModel;
+          modelSel.appendChild(opt);
+          modelSel.value = s.vlmModel;
+        }
+        const deviceRadio = document.querySelector(`input[name="vlm-device"][value="${s.vlmDevice || 'auto'}"]`);
+        if (deviceRadio) deviceRadio.checked = true;
+        document.getElementById('set-vlm-ctx').value = s.vlmNumCtx ?? 4096;
+        document.getElementById('set-vlm-threads').value = s.vlmNumThread ?? 4;
+        document.getElementById('set-img-enabled').checked = !!s.imageCompressionEnabled;
+        document.getElementById('set-img-width').value = s.imageMaxWidth ?? 1920;
+        document.getElementById('set-img-height').value = s.imageMaxHeight ?? 1080;
+        document.getElementById('set-img-quality').value = s.imageQuality ?? 85;
+      } catch (e) {
+        console.warn('Could not load settings', e);
+      }
+    }
+
+    async function saveSettings() {
+      const device = document.querySelector('input[name="vlm-device"]:checked')?.value ?? 'auto';
+      const body = {
+        vlmModel: document.getElementById('set-vlm-model').value,
+        vlmDevice: device,
+        vlmNumCtx: parseInt(document.getElementById('set-vlm-ctx').value, 10),
+        vlmNumThread: parseInt(document.getElementById('set-vlm-threads').value, 10),
+        imageCompressionEnabled: document.getElementById('set-img-enabled').checked,
+        imageMaxWidth: parseInt(document.getElementById('set-img-width').value, 10),
+        imageMaxHeight: parseInt(document.getElementById('set-img-height').value, 10),
+        imageQuality: parseInt(document.getElementById('set-img-quality').value, 10),
+      };
+      const fb = document.getElementById('save-feedback');
+      try {
+        const resp = await fetch('/api/settings', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        fb.className = 'save-feedback ok';
+        fb.textContent = '✓ Gespeichert';
+      } catch (e) {
+        fb.className = 'save-feedback err';
+        fb.textContent = `Fehler: ${e}`;
+      }
+      setTimeout(() => { fb.textContent = ''; }, 4000);
+    }
+
+    loadSettings();
+
     // ── Clock ──────────────────────────────────────────────────────────────
     function updateClock() {
       document.getElementById('clock').textContent = new Date().toLocaleTimeString('de-DE');

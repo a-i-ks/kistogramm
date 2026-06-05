@@ -16,6 +16,11 @@ public class AppSettingsEntity {
     private int imageMaxHeight = 1080;
     private int imageQuality = 85;
 
+    private String vlmModel = "qwen2.5vl:7b";
+    private String vlmDevice = "auto";
+    private int vlmNumCtx = 4096;
+    private int vlmNumThread = 4;
+
     public Integer getId() {
         return id;
     }
@@ -54,5 +59,37 @@ public class AppSettingsEntity {
 
     public void setImageQuality(int imageQuality) {
         this.imageQuality = imageQuality;
+    }
+
+    public String getVlmModel() {
+        return vlmModel;
+    }
+
+    public void setVlmModel(String vlmModel) {
+        this.vlmModel = vlmModel;
+    }
+
+    public String getVlmDevice() {
+        return vlmDevice;
+    }
+
+    public void setVlmDevice(String vlmDevice) {
+        this.vlmDevice = vlmDevice;
+    }
+
+    public int getVlmNumCtx() {
+        return vlmNumCtx;
+    }
+
+    public void setVlmNumCtx(int vlmNumCtx) {
+        this.vlmNumCtx = vlmNumCtx;
+    }
+
+    public int getVlmNumThread() {
+        return vlmNumThread;
+    }
+
+    public void setVlmNumThread(int vlmNumThread) {
+        this.vlmNumThread = vlmNumThread;
     }
 }

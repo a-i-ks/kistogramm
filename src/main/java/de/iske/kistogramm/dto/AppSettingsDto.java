@@ -2,6 +2,9 @@ package de.iske.kistogramm.dto;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 public class AppSettingsDto {
 
@@ -49,5 +52,52 @@ public class AppSettingsDto {
 
     public void setImageQuality(int imageQuality) {
         this.imageQuality = imageQuality;
+    }
+
+    @NotBlank
+    @Size(max = 100)
+    private String vlmModel = "qwen2.5vl:7b";
+
+    @Pattern(regexp = "auto|gpu|cpu")
+    private String vlmDevice = "auto";
+
+    @Min(512)
+    @Max(131072)
+    private int vlmNumCtx = 4096;
+
+    @Min(1)
+    @Max(64)
+    private int vlmNumThread = 4;
+
+    public String getVlmModel() {
+        return vlmModel;
+    }
+
+    public void setVlmModel(String vlmModel) {
+        this.vlmModel = vlmModel;
+    }
+
+    public String getVlmDevice() {
+        return vlmDevice;
+    }
+
+    public void setVlmDevice(String vlmDevice) {
+        this.vlmDevice = vlmDevice;
+    }
+
+    public int getVlmNumCtx() {
+        return vlmNumCtx;
+    }
+
+    public void setVlmNumCtx(int vlmNumCtx) {
+        this.vlmNumCtx = vlmNumCtx;
+    }
+
+    public int getVlmNumThread() {
+        return vlmNumThread;
+    }
+
+    public void setVlmNumThread(int vlmNumThread) {
+        this.vlmNumThread = vlmNumThread;
     }
 }

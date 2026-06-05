@@ -239,6 +239,23 @@ async def delete_job(job_id: str):
     return Response(status_code=resp.status_code)
 
 
+# ── Settings proxy ───────────────────────────────────────────────────────────
+
+@app.get("/api/settings")
+async def get_settings():
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(f"{APP_URL}/api/settings", timeout=5.0)
+    return JSONResponse(content=resp.json(), status_code=resp.status_code)
+
+
+@app.put("/api/settings")
+async def put_settings(request: Request):
+    body = await request.json()
+    async with httpx.AsyncClient() as client:
+        resp = await client.put(f"{APP_URL}/api/settings", json=body, timeout=5.0)
+    return JSONResponse(content=resp.json(), status_code=resp.status_code)
+
+
 # ── Image / Audio serving ────────────────────────────────────────────────────
 
 def _resolve_upload_path(path: str) -> Path:

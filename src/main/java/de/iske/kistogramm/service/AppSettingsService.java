@@ -30,6 +30,10 @@ public class AppSettingsService {
         entity.setImageMaxWidth(dto.getImageMaxWidth());
         entity.setImageMaxHeight(dto.getImageMaxHeight());
         entity.setImageQuality(dto.getImageQuality());
+        entity.setVlmModel(dto.getVlmModel());
+        entity.setVlmDevice(dto.getVlmDevice());
+        entity.setVlmNumCtx(dto.getVlmNumCtx());
+        entity.setVlmNumThread(dto.getVlmNumThread());
         return toDto(repository.save(entity));
     }
 
@@ -44,6 +48,10 @@ public class AppSettingsService {
         dto.setImageMaxWidth(entity.getImageMaxWidth());
         dto.setImageMaxHeight(entity.getImageMaxHeight());
         dto.setImageQuality(entity.getImageQuality());
+        dto.setVlmModel(entity.getVlmModel());
+        dto.setVlmDevice(entity.getVlmDevice());
+        dto.setVlmNumCtx(entity.getVlmNumCtx());
+        dto.setVlmNumThread(entity.getVlmNumThread());
         return dto;
     }
 }

@@ -87,6 +87,32 @@ Return ONLY a JSON object with:
 
 Respond with ONLY the JSON object, no markdown, no explanation."""
 
+_settings_cache: dict | None = None
+_settings_cache_ts: float = 0.0
+_SETTINGS_TTL = 30.0
+
+
+def _get_vlm_config() -> dict:
+    global _settings_cache, _settings_cache_ts
+    now = time.time()
+    if _settings_cache is not None and (now - _settings_cache_ts) < _SETTINGS_TTL:
+        return _settings_cache
+    try:
+        resp = httpx.get(f"{APP_URL}/api/settings", timeout=5)
+        resp.raise_for_status()
+        _settings_cache = resp.json()
+        _settings_cache_ts = now
+        log.info("Settings: model=%s device=%s numCtx=%s",
+                 _settings_cache.get("vlmModel"), _settings_cache.get("vlmDevice"),
+                 _settings_cache.get("vlmNumCtx"))
+    except Exception as e:
+        log.warning("Cannot fetch settings: %s — using cache/defaults", e)
+        if _settings_cache is None:
+            _settings_cache = {"vlmModel": VLM_MODEL, "vlmDevice": "auto",
+                               "vlmNumCtx": 4096, "vlmNumThread": 4}
+    return _settings_cache
+
+
 def check_ollama_health() -> bool:
     try:
         resp = httpx.get(f"{OLLAMA_HOST}/api/tags", timeout=5)
@@ -118,11 +144,21 @@ def analyze_with_vlm(image_path: str, transcript: str, context_hint: str = "", k
     with open(image_path, "rb") as f:
         img_b64 = base64.b64encode(f.read()).decode()
 
+    cfg = _get_vlm_config()
+    model = cfg.get("vlmModel", VLM_MODEL)
+    options: dict = {"num_ctx": cfg.get("vlmNumCtx", 4096)}
+    device = cfg.get("vlmDevice", "auto")
+    if device == "cpu":
+        options["num_gpu"] = 0
+        options["num_thread"] = cfg.get("vlmNumThread", 4)
+    elif device == "gpu":
+        options["num_gpu"] = 9999
+
     prompt = build_ingestion_prompt(transcript, context_hint)
-    payload = {"model": VLM_MODEL, "prompt": prompt, "images": [img_b64], "stream": False}
+    payload = {"model": model, "prompt": prompt, "images": [img_b64], "stream": False, "options": options}
     if keep_alive is not None:
         payload["keep_alive"] = keep_alive
-    log.info("Calling VLM (%s) for ingestion (keep_alive=%s)", VLM_MODEL, keep_alive)
+    log.info("Calling VLM (%s) for ingestion (device=%s keep_alive=%s)", model, device, keep_alive)
     t0 = time.time()
     resp = httpx.post(f"{OLLAMA_HOST}/api/generate", json=payload, timeout=600)
     resp.raise_for_status()
@@ -143,10 +179,20 @@ def analyze_with_prompt(image_path: str, prompt: str, keep_alive=None) -> dict:
     with open(image_path, "rb") as f:
         img_b64 = base64.b64encode(f.read()).decode()
 
-    payload = {"model": VLM_MODEL, "prompt": prompt, "images": [img_b64], "stream": False}
+    cfg = _get_vlm_config()
+    model = cfg.get("vlmModel", VLM_MODEL)
+    options: dict = {"num_ctx": cfg.get("vlmNumCtx", 4096)}
+    device = cfg.get("vlmDevice", "auto")
+    if device == "cpu":
+        options["num_gpu"] = 0
+        options["num_thread"] = cfg.get("vlmNumThread", 4)
+    elif device == "gpu":
+        options["num_gpu"] = 9999
+
+    payload = {"model": model, "prompt": prompt, "images": [img_b64], "stream": False, "options": options}
     if keep_alive is not None:
         payload["keep_alive"] = keep_alive
-    log.info("Calling VLM (%s) for analysis (keep_alive=%s)", VLM_MODEL, keep_alive)
+    log.info("Calling VLM (%s) for analysis (device=%s keep_alive=%s)", model, device, keep_alive)
     t0 = time.time()
     resp = httpx.post(f"{OLLAMA_HOST}/api/generate", json=payload, timeout=600)
     resp.raise_for_status()
