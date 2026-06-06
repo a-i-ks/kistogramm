@@ -34,7 +34,7 @@ IMPORTANT: Describe ONLY the object itself — ignore the surface, background, t
 
 Look at the image carefully and return a single valid JSON object with these fields:
 - "name": the specific name of the object in German, as precise as possible (e.g. "AirPods Pro", "blaue Sprühflasche", "Holzstuhl mit Armlehnen"). Use the user's input above to make the name more accurate.
-- "description": 1-2 sentences in German describing only the object's color, shape, material, and condition. Do NOT mention the background or surface.
+- "description": 1-2 sentences in German describing only the object's color, shape, and material. Do NOT mention the background or surface.
 - "category": exactly one of: Elektronik, Kleidung, Moebelstueck, Lebensmittel, Pflanze, Sonstiges
 - "quantity": number of items visible (integer)
 - "purchase_price": null
