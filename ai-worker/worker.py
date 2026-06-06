@@ -28,11 +28,13 @@ QUEUE_KEY = "ai_jobs_queue"
 VLM_MODEL = os.environ.get("VLM_MODEL", "qwen2.5vl:7b")
 
 PROMPT_INGESTION_BASE = """\
-You are an inventory assistant. Your task is to identify the object in the image as precisely as possible.
+You are an inventory assistant. Your task is to identify the foreground object in the image as precisely as possible.
 {context_block}
+IMPORTANT: Describe ONLY the object itself — ignore the surface, background, table, floor, or any environment it rests on. Do not mention what the object is placed on.
+
 Look at the image carefully and return a single valid JSON object with these fields:
-- "name": the specific name of the object in German, as precise as possible (e.g. "blaue Sprühflasche", "Holzstuhl mit Armlehnen"). Use the user's input above to make the name more accurate.
-- "description": 1-2 sentences in German describing color, shape, material, and condition. Incorporate any details from the user's input.
+- "name": the specific name of the object in German, as precise as possible (e.g. "AirPods Pro", "blaue Sprühflasche", "Holzstuhl mit Armlehnen"). Use the user's input above to make the name more accurate.
+- "description": 1-2 sentences in German describing only the object's color, shape, material, and condition. Do NOT mention the background or surface.
 - "category": exactly one of: Elektronik, Kleidung, Moebelstueck, Lebensmittel, Pflanze, Sonstiges
 - "quantity": number of items visible (integer)
 - "purchase_price": null
