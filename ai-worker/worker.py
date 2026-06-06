@@ -182,7 +182,7 @@ def _call_openai(image_b64: str, prompt: str, api_key: str) -> str:
             {"type": "text", "text": prompt},
             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
         ]}],
-        "max_tokens": 512,
+        "max_tokens": 1024,
     }
     resp = httpx.post(
         "https://api.openai.com/v1/chat/completions",
@@ -211,7 +211,7 @@ def _call_gemini(image_b64: str, prompt: str, api_key: str) -> str:
         ],
         config=genai_types.GenerateContentConfig(
             response_mime_type="application/json",
-            max_output_tokens=512,
+            max_output_tokens=1024,
         ),
     )
     raw = response.text.strip()
@@ -319,9 +319,18 @@ def analyze_with_prompt(image_path: str, prompt: str, r=None, keep_alive=None) -
 def _parse_json_response(raw: str) -> dict:
     raw = re.sub(r"^```(?:json)?\s*", "", raw)
     raw = re.sub(r"\s*```$", "", raw)
-    start = raw.index("{")
-    end = raw.rindex("}") + 1
-    return json.loads(raw[start:end])
+    try:
+        start = raw.index("{")
+    except ValueError:
+        raise ValueError(f"VLM response contains no JSON object: {raw[:300]!r}")
+    try:
+        end = raw.rindex("}") + 1
+    except ValueError:
+        raise ValueError(f"VLM response appears truncated (no closing brace): {raw[:300]!r}")
+    try:
+        return json.loads(raw[start:end])
+    except json.JSONDecodeError as e:
+        raise ValueError(f"VLM response is invalid JSON ({e}): {raw[start:end][:300]!r}")
 
 
 def send_callback(job_id: str, job_type: str, result: dict = None, proposal_data: str = None, error: str = None, transcript: str = None) -> None:
