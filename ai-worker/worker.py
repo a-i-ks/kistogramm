@@ -27,32 +27,106 @@ OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://host.docker.internal:11434")
 QUEUE_KEY = "ai_jobs_queue"
 VLM_MODEL = os.environ.get("VLM_MODEL", "qwen2.5vl:7b")
 
-PROMPT_INGESTION_BASE = """\
-You are an inventory assistant. Your task is to identify the foreground object in the image as precisely as possible.
-{context_block}
-IMPORTANT: Describe ONLY the object itself — ignore the surface, background, table, floor, or any environment it rests on. Do not mention what the object is placed on.
+def build_ingestion_prompt(transcript: str, context_hint: str, capture_meta: dict | None = None) -> str:
+    cm = capture_meta or {}
+    category_hint = cm.get('categoryHint', '')
+    barcode_value = cm.get('barcodeValue', '')
+    barcode_type  = cm.get('barcodeType', '').upper()
+    product_name  = cm.get('productName', '')
+    product_brand = cm.get('productBrand', '')
+    product_desc  = cm.get('productDescription', '')
 
-Look at the image carefully and return a single valid JSON object with these fields:
-- "name": the specific name of the object in German, as precise as possible (e.g. "AirPods Pro", "blaue Sprühflasche", "Holzstuhl mit Armlehnen"). Use the user's input above to make the name more accurate.
-- "description": 1-2 sentences in German describing only the object's color, shape, and material. Do NOT mention the background or surface.
-- "category": exactly one of: Elektronik, Kleidung, Moebelstueck, Lebensmittel, Pflanze, Sonstiges
-- "quantity": number of items visible (integer)
-- "purchase_price": null
-
-All text values must be in German. Respond with ONLY the JSON object, no markdown, no explanation."""
-
-
-def build_ingestion_prompt(transcript: str, context_hint: str) -> str:
+    # Build context block (existing logic preserved)
     parts = []
     if transcript:
         parts.append(f'The user described this item by voice: "{transcript}"')
     if context_hint:
         parts.append(f'Additional user-provided info: "{context_hint}"')
+
+    # Barcode context
+    if barcode_value:
+        if product_name:
+            parts.append(
+                f'A barcode was scanned ({barcode_type}: {barcode_value}) and matched this product:\n'
+                f'  - Product name: {product_name}\n'
+                f'  - Brand: {product_brand or "unknown"}\n'
+                f'  - Description: {product_desc or "not available"}\n'
+                f'Verify this matches the image and use this data to fill in the item details.'
+            )
+        else:
+            parts.append(
+                f'A barcode was scanned: {barcode_type} {barcode_value}. '
+                f'No product found in database — identify the item visually.'
+            )
+
     if parts:
-        context_block = "The user has already provided the following information about this item — use it to improve your identification:\n" + "\n".join(parts) + "\n"
+        context_block = (
+            "The user has already provided the following information about this item"
+            " — use it to improve your identification:\n"
+            + "\n".join(parts) + "\n"
+        )
     else:
         context_block = ""
-    return PROMPT_INGESTION_BASE.format(context_block=context_block)
+
+    # Category preamble (only when category is set and we're not in pure barcode mode)
+    category_preamble = (
+        f'The user has pre-classified this item as: {category_hint}.\n\n'
+        if category_hint and not barcode_value else ''
+    )
+
+    # Category-specific field guidance
+    if category_hint == 'Kleidung':
+        name_hint = ('the specific name of the garment in German '
+                     '(e.g. "Blaues Levi\'s Jeanshemd Gr. M"). Include color, brand, and type if visible.')
+        desc_hint = ("1-2 sentences in German describing the garment's color, material, brand, "
+                     "size (if visible), and condition.")
+        cat_field = '"category": "Kleidung"'
+    elif category_hint == 'Elektronik':
+        name_hint = ('the specific name of the device in German '
+                     '(e.g. "Samsung Galaxy S21 Smartphone"). Include brand, model, and type if visible.')
+        desc_hint = ("1-2 sentences in German describing the device's brand, model, "
+                     "visible ports/features, and condition.")
+        cat_field = '"category": "Elektronik"'
+    elif category_hint == 'Lebensmittel':
+        name_hint = ('the specific product name in German '
+                     '(e.g. "Nutella Haselnusscreme 400g"). Include brand, product name, and weight if visible.')
+        desc_hint = ("1-2 sentences in German describing the product's brand, packaging type, "
+                     "quantity/weight, and any visible expiry or storage notes.")
+        cat_field = '"category": "Lebensmittel"'
+    elif category_hint in ('Möbelstück', 'Moebelstueck'):
+        name_hint = ('the specific name of the furniture in German '
+                     '(e.g. "Eichenholz-Couchtisch IKEA LACK"). Include material, color, brand, and type if visible.')
+        desc_hint = ("1-2 sentences in German describing the furniture's material, color/finish, "
+                     "approximate size, style, and condition.")
+        cat_field = '"category": "Moebelstueck"'
+    elif category_hint == 'Pflanze':
+        name_hint = ('the specific plant name in German '
+                     '(e.g. "Monstera Deliciosa (Fensterblatt)"). Include both common and Latin name if identifiable.')
+        desc_hint = ("1-2 sentences in German describing the plant's species, size, health/condition, and pot type.")
+        cat_field = '"category": "Pflanze"'
+    else:
+        name_hint = ('the specific name of the object in German, as precise as possible '
+                     '(e.g. "AirPods Pro", "blaue Sprühflasche", "Holzstuhl mit Armlehnen"). '
+                     "Use the user's input above to make the name more accurate.")
+        desc_hint = "1-2 sentences in German describing only the object's color, shape, and material."
+        cat_field = '"category": exactly one of: Elektronik, Kleidung, Moebelstueck, Lebensmittel, Pflanze, Sonstiges'
+
+    return (
+        f"You are an inventory assistant. Your task is to identify the foreground object in the image as precisely as possible.\n"
+        f"{context_block}"
+        f"{category_preamble}"
+        f"IMPORTANT: Describe ONLY the object itself — ignore the surface, background, table, floor, or any environment it rests on. "
+        f"Do not mention what the object is placed on.\n"
+        f"\n"
+        f"Look at the image carefully and return a single valid JSON object with these fields:\n"
+        f'- "name": {name_hint}\n'
+        f'- "description": {desc_hint} Do NOT mention the background or surface.\n'
+        f"- {cat_field}\n"
+        f'- "quantity": number of items visible (integer)\n'
+        f'- "purchase_price": null\n'
+        f"\n"
+        f"All text values must be in German. Respond with ONLY the JSON object, no markdown, no explanation."
+    )
 
 PROMPT_DIMENSION = """\
 You are an inventory assistant. Look at this item carefully and estimate its physical dimensions.
@@ -299,8 +373,9 @@ def _vlm_call(image_path: str, prompt: str, r, keep_alive=None) -> str:
         return _call_ollama(img_b64, prompt, cfg, keep_alive)
 
 
-def analyze_with_vlm(image_path: str, transcript: str, context_hint: str = "", r=None, keep_alive=None) -> dict:
-    prompt = build_ingestion_prompt(transcript, context_hint)
+def analyze_with_vlm(image_path: str, transcript: str, context_hint: str = "",
+                     capture_meta: dict | None = None, r=None, keep_alive=None) -> dict:
+    prompt = build_ingestion_prompt(transcript, context_hint, capture_meta)
     raw = _vlm_call(image_path, prompt, r, keep_alive=keep_alive)
     result = _parse_json_response(raw)
     result.setdefault("name", transcript)
@@ -390,8 +465,11 @@ def process_job(job: dict, r) -> None:
         log.info("Transcript for job %s: %s", job_id, transcript[:120])
 
         context_hint = job.get("contextHint", "")
+        capture_meta_str = job.get("captureMetadata", "")
+        capture_meta = json.loads(capture_meta_str) if capture_meta_str else {}
+        log.info("Capture meta for job %s: %s", job_id, capture_meta)
         result = analyze_with_vlm(job["imagePath"], transcript, context_hint,
-                                  r=r, keep_alive=keep_alive)
+                                  capture_meta=capture_meta, r=r, keep_alive=keep_alive)
         log.info("VLM result for job %s: %s", job_id, result)
 
         send_callback(job_id, job_type="INGESTION", result=result, transcript=transcript)

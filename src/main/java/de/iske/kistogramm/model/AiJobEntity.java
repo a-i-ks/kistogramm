@@ -63,6 +63,9 @@ public class AiJobEntity {
     @Column(name = "context_hint", columnDefinition = "TEXT")
     private String contextHint;
 
+    @Column(name = "capture_metadata", columnDefinition = "TEXT")
+    private String captureMetadata;
+
     @Column(name = "date_started")
     private LocalDateTime dateStarted;
 
@@ -122,6 +125,9 @@ public class AiJobEntity {
 
     public String getContextHint() { return contextHint; }
     public void setContextHint(String contextHint) { this.contextHint = contextHint; }
+
+    public String getCaptureMetadata() { return captureMetadata; }
+    public void setCaptureMetadata(String captureMetadata) { this.captureMetadata = captureMetadata; }
 
     public LocalDateTime getDateStarted() { return dateStarted; }
     public void setDateStarted(LocalDateTime dateStarted) { this.dateStarted = dateStarted; }

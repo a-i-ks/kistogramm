@@ -2,6 +2,8 @@ package de.iske.kistogramm.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import de.iske.kistogramm.dto.AiJobResponse;
 import de.iske.kistogramm.model.AiJobEntity;
 import de.iske.kistogramm.service.AiQueueService;
@@ -40,6 +42,7 @@ public class AiIngestionController {
         Integer storageId = null;
         Integer roomId = null;
         String contextHint = null;
+        String captureMetadata = null;
 
         if (metadataJson != null && !metadataJson.isBlank()) {
             try {
@@ -51,15 +54,23 @@ public class AiIngestionController {
                 if (!title.isBlank() || !desc.isBlank()) {
                     contextHint = (title + ((!title.isBlank() && !desc.isBlank()) ? " – " : "") + desc).strip();
                 }
+                String[] captureFields = {"captureMode", "categoryHint", "barcodeValue", "barcodeType",
+                                          "productName", "productBrand", "productDescription"};
+                Map<String, String> capMeta = new LinkedHashMap<>();
+                for (String field : captureFields) {
+                    if (meta.hasNonNull(field)) capMeta.put(field, meta.get(field).asText());
+                }
+                if (!capMeta.isEmpty()) captureMetadata = objectMapper.writeValueAsString(capMeta);
             } catch (Exception e) {
                 log.warn("Malformed metadata JSON, ignoring: {}", e.getMessage());
             }
         }
 
-        log.info("Ingest request: imageSize={}B audio={} storageId={} roomId={} contextHint='{}'",
-                image.getSize(), audio != null && !audio.isEmpty(), storageId, roomId, contextHint);
+        log.info("Ingest request: imageSize={}B audio={} storageId={} roomId={} contextHint='{}' captureMode='{}'",
+                image.getSize(), audio != null && !audio.isEmpty(), storageId, roomId, contextHint,
+                captureMetadata != null ? captureMetadata : "standard");
 
-        AiJobEntity job = aiQueueService.submitJob(image, audio, storageId, roomId, contextHint);
+        AiJobEntity job = aiQueueService.submitJob(image, audio, storageId, roomId, contextHint, captureMetadata);
         log.info("Ingest job submitted: jobId={}", job.getId());
         return ResponseEntity
                 .status(HttpStatus.ACCEPTED)

@@ -50,7 +50,8 @@ public class AiQueueService {
                                  MultipartFile audioFile,
                                  Integer storageId,
                                  Integer roomId,
-                                 String contextHint) throws IOException {
+                                 String contextHint,
+                                 String captureMetadata) throws IOException {
         UUID jobId = UUID.randomUUID();
         Path jobDir = Path.of(uploadDir, jobId.toString());
         Files.createDirectories(jobDir);
@@ -75,13 +76,14 @@ public class AiQueueService {
         job.setStorageId(storageId);
         job.setRoomId(roomId);
         job.setContextHint(contextHint);
+        job.setCaptureMetadata(captureMetadata);
         aiJobRepository.save(job);
 
         pushToQueue(jobId, imagePath.toAbsolutePath().toString(),
                 audioPath != null ? audioPath.toAbsolutePath().toString() : null,
-                AiJobEntity.JobType.INGESTION, null, contextHint);
-        log.info("INGESTION job queued: jobId={} storageId={} roomId={} audio={} contextHint='{}'",
-                jobId, storageId, roomId, audioPath != null, contextHint);
+                AiJobEntity.JobType.INGESTION, null, contextHint, captureMetadata);
+        log.info("INGESTION job queued: jobId={} storageId={} roomId={} audio={} contextHint='{}' captureMetadata='{}'",
+                jobId, storageId, roomId, audioPath != null, contextHint, captureMetadata);
         return job;
     }
 
@@ -139,6 +141,12 @@ public class AiQueueService {
 
     private void pushToQueue(UUID jobId, String imagePath, String audioPath,
                               AiJobEntity.JobType jobType, Integer itemId, String contextHint) {
+        pushToQueue(jobId, imagePath, audioPath, jobType, itemId, contextHint, null);
+    }
+
+    private void pushToQueue(UUID jobId, String imagePath, String audioPath,
+                              AiJobEntity.JobType jobType, Integer itemId, String contextHint,
+                              String captureMetadata) {
         try {
             Map<String, String> payload = new LinkedHashMap<>();
             payload.put("jobId", jobId.toString());
@@ -147,6 +155,7 @@ public class AiQueueService {
             payload.put("jobType", jobType.name());
             if (itemId != null) payload.put("itemId", itemId.toString());
             if (contextHint != null && !contextHint.isBlank()) payload.put("contextHint", contextHint);
+            if (captureMetadata != null && !captureMetadata.isBlank()) payload.put("captureMetadata", captureMetadata);
             Long queueLen = redisTemplate.opsForList().leftPush(QUEUE_KEY, objectMapper.writeValueAsString(payload));
             log.debug("Pushed job {} to Redis queue '{}', queue length now: {}", jobId, QUEUE_KEY, queueLen);
         } catch (JsonProcessingException e) {
