@@ -129,7 +129,8 @@ public class AiQueueService {
 
     public void requeueJob(AiJobEntity job) {
         pushToQueue(job.getId(), job.getImagePath(), job.getAudioPath(),
-                job.getJobType(), job.getItemId(), job.getContextHint(), job.getCaptureMetadata());
+                job.getJobType(), job.getItemId(), job.getContextHint(), job.getCaptureMetadata(),
+                job.getRetryCount());
         log.info("Job re-queued after retry: jobId={} retryCount={}", job.getId(), job.getRetryCount());
     }
 
@@ -147,18 +148,25 @@ public class AiQueueService {
 
     private void pushToQueue(UUID jobId, String imagePath, String audioPath,
                               AiJobEntity.JobType jobType, Integer itemId, String contextHint) {
-        pushToQueue(jobId, imagePath, audioPath, jobType, itemId, contextHint, null);
+        pushToQueue(jobId, imagePath, audioPath, jobType, itemId, contextHint, null, 0);
     }
 
     private void pushToQueue(UUID jobId, String imagePath, String audioPath,
                               AiJobEntity.JobType jobType, Integer itemId, String contextHint,
                               String captureMetadata) {
+        pushToQueue(jobId, imagePath, audioPath, jobType, itemId, contextHint, captureMetadata, 0);
+    }
+
+    private void pushToQueue(UUID jobId, String imagePath, String audioPath,
+                              AiJobEntity.JobType jobType, Integer itemId, String contextHint,
+                              String captureMetadata, int retryCount) {
         try {
             Map<String, String> payload = new LinkedHashMap<>();
             payload.put("jobId", jobId.toString());
             payload.put("imagePath", imagePath != null ? imagePath : "");
             payload.put("audioPath", audioPath != null ? audioPath : "");
             payload.put("jobType", jobType.name());
+            payload.put("retryCount", String.valueOf(retryCount));
             if (itemId != null) payload.put("itemId", itemId.toString());
             if (contextHint != null && !contextHint.isBlank()) payload.put("contextHint", contextHint);
             if (captureMetadata != null && !captureMetadata.isBlank()) payload.put("captureMetadata", captureMetadata);

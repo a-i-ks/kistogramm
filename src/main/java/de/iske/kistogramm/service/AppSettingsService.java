@@ -45,6 +45,7 @@ public class AppSettingsService {
         entity.setAiRetryMaxAttempts(dto.getAiRetryMaxAttempts());
         entity.setAiRetryDelaySeconds(dto.getAiRetryDelaySeconds());
         entity.setLogLevel(dto.getLogLevel() != null ? dto.getLogLevel() : "INFO");
+        entity.setVlmFallbackToOllamaEnabled(dto.isVlmFallbackToOllamaEnabled());
         return toDto(repository.save(entity));
     }
 
@@ -74,6 +75,7 @@ public class AppSettingsService {
         dto.setAiRetryMaxAttempts(entity.getAiRetryMaxAttempts());
         dto.setAiRetryDelaySeconds(entity.getAiRetryDelaySeconds());
         dto.setLogLevel(entity.getLogLevel() != null ? entity.getLogLevel() : "INFO");
+        dto.setVlmFallbackToOllamaEnabled(entity.isVlmFallbackToOllamaEnabled());
         return dto;
     }
 }

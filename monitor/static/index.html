@@ -320,6 +320,12 @@
               <input type="password" id="set-gemini-key" placeholder="AIza…" autocomplete="off">
             </div>
           </div>
+          <div class="field" id="field-vlm-fallback" style="display:none">
+            <div class="checkbox-row">
+              <input type="checkbox" id="set-vlm-fallback">
+              <label for="set-vlm-fallback">Bei letztem Retry auf Ollama zurückfallen</label>
+            </div>
+          </div>
           <div id="section-ollama-model-config" style="display:flex;flex-direction:column;gap:10px">
             <div class="field">
               <label for="set-vlm-model">Modell</label>
@@ -523,6 +529,7 @@
       } else {
         apiKeysSection.style.display = 'none';
       }
+      document.getElementById('field-vlm-fallback').style.display = isOllama ? 'none' : '';
 
       if (!isOllama) {
         const labels = { openai: 'OpenAI GPT-4o-mini', gemini: 'Google Gemini 3.5 Flash' };
@@ -566,6 +573,7 @@
         document.getElementById('set-retry-attempts').value = s.aiRetryMaxAttempts ?? 3;
         document.getElementById('set-retry-delay').value = s.aiRetryDelaySeconds ?? 30;
         document.getElementById('set-log-level').value = s.logLevel ?? 'INFO';
+        document.getElementById('set-vlm-fallback').checked = !!s.vlmFallbackToOllamaEnabled;
       } catch (e) {
         console.warn('Could not load settings', e);
       }
@@ -594,6 +602,7 @@
         aiRetryMaxAttempts: parseInt(document.getElementById('set-retry-attempts').value, 10),
         aiRetryDelaySeconds: parseInt(document.getElementById('set-retry-delay').value, 10),
         logLevel: document.getElementById('set-log-level').value,
+        vlmFallbackToOllamaEnabled: document.getElementById('set-vlm-fallback').checked,
       };
       if (openaiKey) body.openaiApiKey = openaiKey;
       if (geminiKey) body.geminiApiKey = geminiKey;

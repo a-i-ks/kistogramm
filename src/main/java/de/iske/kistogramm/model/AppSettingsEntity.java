@@ -36,6 +36,8 @@ public class AppSettingsEntity {
 
     private String logLevel = "INFO";
 
+    private boolean vlmFallbackToOllamaEnabled = false;
+
     public Integer getId() {
         return id;
     }
@@ -194,5 +196,13 @@ public class AppSettingsEntity {
 
     public void setLogLevel(String logLevel) {
         this.logLevel = logLevel;
+    }
+
+    public boolean isVlmFallbackToOllamaEnabled() {
+        return vlmFallbackToOllamaEnabled;
+    }
+
+    public void setVlmFallbackToOllamaEnabled(boolean vlmFallbackToOllamaEnabled) {
+        this.vlmFallbackToOllamaEnabled = vlmFallbackToOllamaEnabled;
     }
 }

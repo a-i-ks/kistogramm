@@ -367,7 +367,7 @@ def _openai_increment(r) -> None:
 
 # ── Core VLM call (routes to provider) ────────────────────────────────────────
 
-def _vlm_call(image_path: str, prompt: str, r, keep_alive=None) -> str:
+def _vlm_call(image_path: str, prompt: str, r, keep_alive=None, retry_count: int = 0) -> str:
     img_b64 = _encode_image_for_vlm(image_path)
     cfg = _get_vlm_config()
     provider = cfg.get("vlmProvider", "ollama")
@@ -377,21 +377,39 @@ def _vlm_call(image_path: str, prompt: str, r, keep_alive=None) -> str:
         if not api_key:
             raise RuntimeError("OPENAI_KEY_MISSING: No OpenAI API key configured in settings")
         _openai_increment(r)
-        return _call_openai(img_b64, prompt, api_key)
+        return _call_with_fallback(_call_openai, img_b64, prompt, api_key, cfg, keep_alive, retry_count)
     elif provider == "gemini":
         api_key = cfg.get("geminiApiKey") or ""
         if not api_key:
             raise RuntimeError("GEMINI_KEY_MISSING: No Gemini API key configured in settings")
         _gemini_check_and_increment(r)
-        return _call_gemini(img_b64, prompt, api_key)
+        return _call_with_fallback(_call_gemini, img_b64, prompt, api_key, cfg, keep_alive, retry_count)
     else:
         return _call_ollama(img_b64, prompt, cfg, keep_alive)
 
 
+def _call_with_fallback(primary_fn, img_b64: str, prompt: str, api_key: str,
+                        cfg: dict, keep_alive, retry_count: int) -> str:
+    try:
+        return primary_fn(img_b64, prompt, api_key)
+    except Exception as exc:
+        fallback_enabled = cfg.get("vlmFallbackToOllamaEnabled", False)
+        max_attempts = cfg.get("aiRetryMaxAttempts", 3)
+        is_last_retry = retry_count >= max_attempts
+        if fallback_enabled and is_last_retry:
+            log.warning("Primary provider failed on last retry (%d/%d), falling back to Ollama: %s",
+                        retry_count, max_attempts, exc)
+            if not check_ollama_health():
+                raise RuntimeError(f"Fallback to Ollama failed: Ollama not reachable. Original error: {exc}") from exc
+            return _call_ollama(img_b64, prompt, cfg, keep_alive)
+        raise
+
+
 def analyze_with_vlm(image_path: str, transcript: str, context_hint: str = "",
-                     capture_meta: dict | None = None, r=None, keep_alive=None) -> dict:
+                     capture_meta: dict | None = None, r=None, keep_alive=None,
+                     retry_count: int = 0) -> dict:
     prompt = build_ingestion_prompt(transcript, context_hint, capture_meta)
-    raw = _vlm_call(image_path, prompt, r, keep_alive=keep_alive)
+    raw = _vlm_call(image_path, prompt, r, keep_alive=keep_alive, retry_count=retry_count)
     result = _parse_json_response(raw)
     result.setdefault("name", transcript)
     result.setdefault("description", "")
@@ -401,8 +419,9 @@ def analyze_with_vlm(image_path: str, transcript: str, context_hint: str = "",
     return result
 
 
-def analyze_with_prompt(image_path: str, prompt: str, r=None, keep_alive=None) -> dict:
-    raw = _vlm_call(image_path, prompt, r, keep_alive=keep_alive)
+def analyze_with_prompt(image_path: str, prompt: str, r=None, keep_alive=None,
+                        retry_count: int = 0) -> dict:
+    raw = _vlm_call(image_path, prompt, r, keep_alive=keep_alive, retry_count=retry_count)
     return _parse_json_response(raw)
 
 
@@ -466,13 +485,14 @@ def process_job(job: dict, r) -> None:
 
     cfg = _get_vlm_config()
     provider = cfg.get("vlmProvider", "ollama")
+    retry_count = int(job.get("retryCount", 0))
 
     if provider == "ollama" and not check_ollama_health():
         raise RuntimeError(f"OLLAMA_UNREACHABLE: Ollama not available at {OLLAMA_HOST}, cannot process job {job_id}")
 
     queue_depth = r.llen(QUEUE_KEY)
     keep_alive = -1 if queue_depth > 0 else None
-    log.info("Provider=%s queue_depth=%d keep_alive=%s", provider, queue_depth, keep_alive)
+    log.info("Provider=%s queue_depth=%d keep_alive=%s retry_count=%d", provider, queue_depth, keep_alive, retry_count)
 
     if job_type == "INGESTION":
         audio_path = job.get("audioPath", "")
@@ -484,14 +504,16 @@ def process_job(job: dict, r) -> None:
         capture_meta = json.loads(capture_meta_str) if capture_meta_str else {}
         log.info("Capture meta for job %s: %s", job_id, capture_meta)
         result = analyze_with_vlm(job["imagePath"], transcript, context_hint,
-                                  capture_meta=capture_meta, r=r, keep_alive=keep_alive)
+                                  capture_meta=capture_meta, r=r, keep_alive=keep_alive,
+                                  retry_count=retry_count)
         log.info("VLM result for job %s: %s", job_id, result)
 
         send_callback(job_id, job_type="INGESTION", result=result, transcript=transcript)
 
     elif job_type in ANALYSIS_PROMPTS:
         prompt = ANALYSIS_PROMPTS[job_type]
-        proposal = analyze_with_prompt(job["imagePath"], prompt, r=r, keep_alive=keep_alive)
+        proposal = analyze_with_prompt(job["imagePath"], prompt, r=r, keep_alive=keep_alive,
+                                       retry_count=retry_count)
         log.info("Proposal for job %s: %s", job_id, proposal)
 
         send_callback(job_id, job_type=job_type, proposal_data=json.dumps(proposal))

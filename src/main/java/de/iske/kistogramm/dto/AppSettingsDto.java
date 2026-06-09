@@ -161,6 +161,8 @@ public class AppSettingsDto {
     @Pattern(regexp = "DEBUG|INFO|WARNING|ERROR")
     private String logLevel = "INFO";
 
+    private boolean vlmFallbackToOllamaEnabled = false;
+
     public boolean isVlmImageCompressionEnabled() {
         return vlmImageCompressionEnabled;
     }
@@ -223,5 +225,13 @@ public class AppSettingsDto {
 
     public void setLogLevel(String logLevel) {
         this.logLevel = logLevel;
+    }
+
+    public boolean isVlmFallbackToOllamaEnabled() {
+        return vlmFallbackToOllamaEnabled;
+    }
+
+    public void setVlmFallbackToOllamaEnabled(boolean vlmFallbackToOllamaEnabled) {
+        this.vlmFallbackToOllamaEnabled = vlmFallbackToOllamaEnabled;
     }
 }
