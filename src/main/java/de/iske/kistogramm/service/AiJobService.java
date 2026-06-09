@@ -31,15 +31,18 @@ public class AiJobService {
     private final ItemRepository itemRepository;
     private final TagRepository tagRepository;
     private final ObjectMapper objectMapper;
+    private final AiQueueService aiQueueService;
 
     public AiJobService(AiJobRepository aiJobRepository,
                         ItemRepository itemRepository,
                         TagRepository tagRepository,
-                        ObjectMapper objectMapper) {
+                        ObjectMapper objectMapper,
+                        AiQueueService aiQueueService) {
         this.aiJobRepository = aiJobRepository;
         this.itemRepository = itemRepository;
         this.tagRepository = tagRepository;
         this.objectMapper = objectMapper;
+        this.aiQueueService = aiQueueService;
     }
 
     public AiJobResponse getJob(UUID jobId) {
@@ -94,7 +97,7 @@ public class AiJobService {
                 job.setErrorMessage("Manuell abgebrochen");
                 aiJobRepository.save(job);
             }
-            case DONE, FAILED, CANCELLED -> {
+            case DONE, FAILED, CANCELLED, AWAITING_RETRY -> {
                 log.info("Job deleted: jobId={} status={}", jobId, job.getStatus());
                 aiJobRepository.delete(job);
             }
@@ -242,6 +245,23 @@ public class AiJobService {
                 item.getTags().add(tag);
             }
         }
+    }
+
+    @Transactional
+    public AiJobResponse retryJob(UUID jobId) {
+        AiJobEntity job = aiJobRepository.findById(jobId)
+                .orElseThrow(() -> new NoSuchElementException("Job not found: " + jobId));
+        if (job.getStatus() != AiJobEntity.Status.FAILED) {
+            throw new IllegalArgumentException("Only FAILED jobs can be retried. Current status: " + job.getStatus());
+        }
+        job.setStatus(AiJobEntity.Status.PENDING);
+        job.setRetryCount(0);
+        job.setNextRetryAt(null);
+        job.setErrorMessage(null);
+        aiJobRepository.save(job);
+        aiQueueService.requeueJob(job);
+        log.info("Job manually retried: jobId={} type={}", jobId, job.getJobType());
+        return AiJobResponse.from(job);
     }
 
     @Transactional

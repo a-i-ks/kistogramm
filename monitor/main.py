@@ -210,6 +210,13 @@ async def proxy_jobs(request: Request):
         return JSONResponse({"error": str(e), "jobs": []}, status_code=502)
 
 
+@app.post("/api/jobs/{job_id}/retry")
+async def retry_job(job_id: str):
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(f"{APP_URL}/api/ai/jobs/{job_id}/retry", timeout=5.0)
+    return JSONResponse(content=resp.json(), status_code=resp.status_code)
+
+
 @app.post("/api/jobs/{job_id}/pause")
 async def pause_job(job_id: str):
     async with httpx.AsyncClient() as client:

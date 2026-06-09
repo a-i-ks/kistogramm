@@ -148,6 +148,16 @@ public class AppSettingsDto {
     @Max(100)
     private int vlmImageQuality = 85;
 
+    private boolean aiRetryEnabled = true;
+
+    @Min(1)
+    @Max(10)
+    private int aiRetryMaxAttempts = 3;
+
+    @Min(1)
+    @Max(3600)
+    private int aiRetryDelaySeconds = 30;
+
     public boolean isVlmImageCompressionEnabled() {
         return vlmImageCompressionEnabled;
     }
@@ -178,5 +188,29 @@ public class AppSettingsDto {
 
     public void setVlmImageQuality(int vlmImageQuality) {
         this.vlmImageQuality = vlmImageQuality;
+    }
+
+    public boolean isAiRetryEnabled() {
+        return aiRetryEnabled;
+    }
+
+    public void setAiRetryEnabled(boolean aiRetryEnabled) {
+        this.aiRetryEnabled = aiRetryEnabled;
+    }
+
+    public int getAiRetryMaxAttempts() {
+        return aiRetryMaxAttempts;
+    }
+
+    public void setAiRetryMaxAttempts(int aiRetryMaxAttempts) {
+        this.aiRetryMaxAttempts = aiRetryMaxAttempts;
+    }
+
+    public int getAiRetryDelaySeconds() {
+        return aiRetryDelaySeconds;
+    }
+
+    public void setAiRetryDelaySeconds(int aiRetryDelaySeconds) {
+        this.aiRetryDelaySeconds = aiRetryDelaySeconds;
     }
 }

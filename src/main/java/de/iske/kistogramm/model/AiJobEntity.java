@@ -10,7 +10,7 @@ import java.util.UUID;
 public class AiJobEntity {
 
     public enum Status {
-        PENDING, PAUSED, PROCESSING, DONE, FAILED, CANCELLED
+        PENDING, PAUSED, PROCESSING, DONE, FAILED, CANCELLED, AWAITING_RETRY
     }
 
     public enum JobType {
@@ -65,6 +65,12 @@ public class AiJobEntity {
 
     @Column(name = "capture_metadata", columnDefinition = "TEXT")
     private String captureMetadata;
+
+    @Column(name = "retry_count", nullable = false)
+    private int retryCount = 0;
+
+    @Column(name = "next_retry_at")
+    private LocalDateTime nextRetryAt;
 
     @Column(name = "date_started")
     private LocalDateTime dateStarted;
@@ -128,6 +134,12 @@ public class AiJobEntity {
 
     public String getCaptureMetadata() { return captureMetadata; }
     public void setCaptureMetadata(String captureMetadata) { this.captureMetadata = captureMetadata; }
+
+    public int getRetryCount() { return retryCount; }
+    public void setRetryCount(int retryCount) { this.retryCount = retryCount; }
+
+    public LocalDateTime getNextRetryAt() { return nextRetryAt; }
+    public void setNextRetryAt(LocalDateTime nextRetryAt) { this.nextRetryAt = nextRetryAt; }
 
     public LocalDateTime getDateStarted() { return dateStarted; }
     public void setDateStarted(LocalDateTime dateStarted) { this.dateStarted = dateStarted; }

@@ -18,6 +18,7 @@ public class AiJobResponse {
     private String proposalStatus;
     private String whisperTranscript;
     private String contextHint;
+    private int retryCount;
     private LocalDateTime dateCreated;
     private LocalDateTime dateStarted;
     private LocalDateTime dateModified;
@@ -25,7 +26,7 @@ public class AiJobResponse {
     public AiJobResponse(UUID jobId, String status, String jobType, Integer itemId,
                          String imagePath, String audioPath, String errorMessage,
                          String proposalData, String proposalStatus, String whisperTranscript,
-                         String contextHint, LocalDateTime dateCreated,
+                         String contextHint, int retryCount, LocalDateTime dateCreated,
                          LocalDateTime dateStarted, LocalDateTime dateModified) {
         this.jobId = jobId;
         this.status = status;
@@ -38,6 +39,7 @@ public class AiJobResponse {
         this.proposalStatus = proposalStatus;
         this.whisperTranscript = whisperTranscript;
         this.contextHint = contextHint;
+        this.retryCount = retryCount;
         this.dateCreated = dateCreated;
         this.dateStarted = dateStarted;
         this.dateModified = dateModified;
@@ -56,6 +58,7 @@ public class AiJobResponse {
                 job.getProposalStatus().name(),
                 job.getWhisperTranscript(),
                 job.getContextHint(),
+                job.getRetryCount(),
                 job.getDateCreated(),
                 job.getDateStarted(),
                 job.getDateModified()
@@ -73,6 +76,7 @@ public class AiJobResponse {
     public String getProposalStatus() { return proposalStatus; }
     public String getWhisperTranscript() { return whisperTranscript; }
     public String getContextHint() { return contextHint; }
+    public int getRetryCount() { return retryCount; }
     public LocalDateTime getDateCreated() { return dateCreated; }
     public LocalDateTime getDateStarted() { return dateStarted; }
     public LocalDateTime getDateModified() { return dateModified; }

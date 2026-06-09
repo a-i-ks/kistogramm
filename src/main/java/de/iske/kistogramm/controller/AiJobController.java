@@ -73,4 +73,9 @@ public class AiJobController {
     public ResponseEntity<AiJobResponse> rejectProposal(@PathVariable UUID jobId) {
         return ResponseEntity.ok(aiJobService.rejectProposal(jobId));
     }
+
+    @PostMapping("/{jobId}/retry")
+    public ResponseEntity<AiJobResponse> retryJob(@PathVariable UUID jobId) {
+        return ResponseEntity.ok(aiJobService.retryJob(jobId));
+    }
 }

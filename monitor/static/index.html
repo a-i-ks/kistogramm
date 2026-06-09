@@ -158,6 +158,7 @@
     .badge.DONE { background: #14532d; color: var(--green); }
     .badge.FAILED { background: #450a0a; color: var(--red); }
     .badge.CANCELLED { background: #1c1917; color: #78716c; }
+    .badge.AWAITING_RETRY { background: #431407; color: #fb923c; animation: pulse 2s ease-in-out infinite; }
     @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.6 } }
 
     .actions { display: flex; gap: 4px; }
@@ -369,6 +370,23 @@
           </div>
         </div>
         <div class="settings-group">
+          <h3>Automatische Wiederholung (Retry)</h3>
+          <div class="field">
+            <div class="checkbox-row">
+              <input type="checkbox" id="set-retry-enabled">
+              <label for="set-retry-enabled">Retry bei 503-Fehler aktiviert</label>
+            </div>
+          </div>
+          <div class="field">
+            <label for="set-retry-attempts">Max. Versuche</label>
+            <input type="number" id="set-retry-attempts" min="1" max="10" value="3">
+          </div>
+          <div class="field">
+            <label for="set-retry-delay">Wartezeit zwischen Versuchen (Sekunden)</label>
+            <input type="number" id="set-retry-delay" min="1" max="3600" value="30">
+          </div>
+        </div>
+        <div class="settings-group">
           <h3>Bildkomprimierung (KI-Erkennung)</h3>
           <div class="field">
             <div class="checkbox-row">
@@ -408,6 +426,7 @@
           <option>DONE</option>
           <option>FAILED</option>
           <option>CANCELLED</option>
+          <option>AWAITING_RETRY</option>
         </select>
         <select id="filter-type">
           <option value="">Alle Typen</option>
@@ -531,6 +550,9 @@
         document.getElementById('set-vlm-img-width').value = s.vlmImageMaxWidth ?? 672;
         document.getElementById('set-vlm-img-height').value = s.vlmImageMaxHeight ?? 448;
         document.getElementById('set-vlm-img-quality').value = s.vlmImageQuality ?? 85;
+        document.getElementById('set-retry-enabled').checked = s.aiRetryEnabled !== false;
+        document.getElementById('set-retry-attempts').value = s.aiRetryMaxAttempts ?? 3;
+        document.getElementById('set-retry-delay').value = s.aiRetryDelaySeconds ?? 30;
       } catch (e) {
         console.warn('Could not load settings', e);
       }
@@ -555,6 +577,9 @@
         vlmImageMaxWidth: parseInt(document.getElementById('set-vlm-img-width').value, 10),
         vlmImageMaxHeight: parseInt(document.getElementById('set-vlm-img-height').value, 10),
         vlmImageQuality: parseInt(document.getElementById('set-vlm-img-quality').value, 10),
+        aiRetryEnabled: document.getElementById('set-retry-enabled').checked,
+        aiRetryMaxAttempts: parseInt(document.getElementById('set-retry-attempts').value, 10),
+        aiRetryDelaySeconds: parseInt(document.getElementById('set-retry-delay').value, 10),
       };
       if (openaiKey) body.openaiApiKey = openaiKey;
       if (geminiKey) body.geminiApiKey = geminiKey;
@@ -922,6 +947,9 @@
         btns += `<button class="btn-icon danger" title="Abbrechen" onclick="jobAction(event,'cancel','${id}')">✖</button>`;
       } else if (status === 'PROCESSING') {
         btns += `<button class="btn-icon danger" title="Abbrechen (erzwingen)" onclick="jobAction(event,'cancel','${id}')">✖</button>`;
+      } else if (status === 'FAILED') {
+        btns += `<button class="btn-icon" title="Erneut versuchen" onclick="jobAction(event,'retry','${id}')">↻</button>`;
+        btns += `<button class="btn-icon danger" title="Löschen" onclick="jobAction(event,'delete','${id}')">🗑</button>`;
       } else {
         btns += `<button class="btn-icon danger" title="Löschen" onclick="jobAction(event,'delete','${id}')">🗑</button>`;
       }
@@ -936,6 +964,8 @@
           resp = await fetch(`/api/jobs/${id}/pause`, { method: 'POST' });
         } else if (action === 'resume') {
           resp = await fetch(`/api/jobs/${id}/resume`, { method: 'POST' });
+        } else if (action === 'retry') {
+          resp = await fetch(`/api/jobs/${id}/retry`, { method: 'POST' });
         } else {
           resp = await fetch(`/api/jobs/${id}`, { method: 'DELETE' });
           if (resp.ok && selectedJobId === id) closeDetail();

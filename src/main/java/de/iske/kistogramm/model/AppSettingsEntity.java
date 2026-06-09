@@ -30,6 +30,10 @@ public class AppSettingsEntity {
     private int vlmImageMaxHeight = 448;
     private int vlmImageQuality = 85;
 
+    private boolean aiRetryEnabled = true;
+    private int aiRetryMaxAttempts = 3;
+    private int aiRetryDelaySeconds = 30;
+
     public Integer getId() {
         return id;
     }
@@ -156,5 +160,29 @@ public class AppSettingsEntity {
 
     public void setVlmImageQuality(int vlmImageQuality) {
         this.vlmImageQuality = vlmImageQuality;
+    }
+
+    public boolean isAiRetryEnabled() {
+        return aiRetryEnabled;
+    }
+
+    public void setAiRetryEnabled(boolean aiRetryEnabled) {
+        this.aiRetryEnabled = aiRetryEnabled;
+    }
+
+    public int getAiRetryMaxAttempts() {
+        return aiRetryMaxAttempts;
+    }
+
+    public void setAiRetryMaxAttempts(int aiRetryMaxAttempts) {
+        this.aiRetryMaxAttempts = aiRetryMaxAttempts;
+    }
+
+    public int getAiRetryDelaySeconds() {
+        return aiRetryDelaySeconds;
+    }
+
+    public void setAiRetryDelaySeconds(int aiRetryDelaySeconds) {
+        this.aiRetryDelaySeconds = aiRetryDelaySeconds;
     }
 }

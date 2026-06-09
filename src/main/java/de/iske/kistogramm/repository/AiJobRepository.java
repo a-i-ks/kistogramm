@@ -3,6 +3,7 @@ package de.iske.kistogramm.repository;
 import de.iske.kistogramm.model.AiJobEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -21,4 +22,6 @@ public interface AiJobRepository extends JpaRepository<AiJobEntity, UUID> {
     List<AiJobEntity> findByJobTypeAndStatus(AiJobEntity.JobType jobType, AiJobEntity.Status status);
 
     List<AiJobEntity> findByItemIdAndJobTypeAndStatus(Integer itemId, AiJobEntity.JobType jobType, AiJobEntity.Status status);
+
+    List<AiJobEntity> findByStatusAndNextRetryAtBefore(AiJobEntity.Status status, LocalDateTime time);
 }

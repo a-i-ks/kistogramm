@@ -1,6 +1,7 @@
 package de.iske.kistogramm.controller;
 
 import de.iske.kistogramm.dto.AiWebhookPayload;
+import de.iske.kistogramm.dto.AppSettingsDto;
 import de.iske.kistogramm.dto.Item;
 import de.iske.kistogramm.model.AiJobEntity;
 import de.iske.kistogramm.model.ImageEntity;
@@ -10,6 +11,7 @@ import de.iske.kistogramm.repository.CategoryRepository;
 import de.iske.kistogramm.repository.ImageRepository;
 import de.iske.kistogramm.repository.ItemRepository;
 import de.iske.kistogramm.repository.TagRepository;
+import de.iske.kistogramm.service.AppSettingsService;
 import de.iske.kistogramm.service.ImageCompressionService;
 import de.iske.kistogramm.service.ItemService;
 import jakarta.validation.Valid;
@@ -43,6 +45,7 @@ public class AiWebhookController {
     private final ItemRepository itemRepository;
     private final ItemService itemService;
     private final ImageCompressionService imageCompressionService;
+    private final AppSettingsService appSettingsService;
 
     public AiWebhookController(AiJobRepository aiJobRepository,
                                 CategoryRepository categoryRepository,
@@ -50,7 +53,8 @@ public class AiWebhookController {
                                 ImageRepository imageRepository,
                                 ItemRepository itemRepository,
                                 ItemService itemService,
-                                ImageCompressionService imageCompressionService) {
+                                ImageCompressionService imageCompressionService,
+                                AppSettingsService appSettingsService) {
         this.aiJobRepository = aiJobRepository;
         this.categoryRepository = categoryRepository;
         this.tagRepository = tagRepository;
@@ -58,6 +62,7 @@ public class AiWebhookController {
         this.itemRepository = itemRepository;
         this.itemService = itemService;
         this.imageCompressionService = imageCompressionService;
+        this.appSettingsService = appSettingsService;
     }
 
     @PostMapping("/result")
@@ -87,6 +92,20 @@ public class AiWebhookController {
         if (payload.getError() != null && !payload.getError().isBlank()) {
             log.error("Webhook: worker reported error for jobId={} type={}: {}",
                     payload.getJobId(), job.getJobType(), payload.getError());
+            if (isRetryableError(payload.getError())) {
+                AppSettingsDto settings = appSettingsService.getSettings();
+                if (settings.isAiRetryEnabled() && job.getRetryCount() < settings.getAiRetryMaxAttempts()) {
+                    job.setRetryCount(job.getRetryCount() + 1);
+                    job.setNextRetryAt(LocalDateTime.now().plusSeconds(settings.getAiRetryDelaySeconds()));
+                    job.setStatus(AiJobEntity.Status.AWAITING_RETRY);
+                    job.setErrorMessage(payload.getError());
+                    aiJobRepository.save(job);
+                    log.warn("Webhook: job {} scheduled for retry {}/{} in {}s",
+                            job.getId(), job.getRetryCount(), settings.getAiRetryMaxAttempts(),
+                            settings.getAiRetryDelaySeconds());
+                    return ResponseEntity.ok().build();
+                }
+            }
             job.setStatus(AiJobEntity.Status.FAILED);
             job.setErrorMessage(payload.getError());
             aiJobRepository.save(job);
@@ -210,5 +229,9 @@ public class AiWebhookController {
         if (lower.endsWith(".png")) return "image/png";
         if (lower.endsWith(".webp")) return "image/webp";
         return "image/jpeg";
+    }
+
+    private boolean isRetryableError(String error) {
+        return error != null && error.contains("503");
     }
 }

@@ -127,6 +127,12 @@ public class AiQueueService {
         return job;
     }
 
+    public void requeueJob(AiJobEntity job) {
+        pushToQueue(job.getId(), job.getImagePath(), job.getAudioPath(),
+                job.getJobType(), job.getItemId(), job.getContextHint(), job.getCaptureMetadata());
+        log.info("Job re-queued after retry: jobId={} retryCount={}", job.getId(), job.getRetryCount());
+    }
+
     public void cancelJob(UUID jobId) {
         AiJobEntity job = aiJobRepository.findById(jobId)
                 .orElseThrow(() -> new NoSuchElementException("Job not found: " + jobId));
