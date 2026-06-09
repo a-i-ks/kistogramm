@@ -1,0 +1,1 @@
+ALTER TABLE app_settings ADD COLUMN log_level VARCHAR(10) NOT NULL DEFAULT 'INFO';

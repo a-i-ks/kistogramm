@@ -14,7 +14,8 @@ from google.genai import types as genai_types
 from PIL import Image
 from faster_whisper import WhisperModel
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+_initial_level = os.environ.get("LOG_LEVEL", "INFO").upper()
+logging.basicConfig(level=getattr(logging, _initial_level, logging.INFO), format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
 REDIS_HOST = os.environ.get("REDIS_HOST", "redis")
@@ -173,6 +174,12 @@ _settings_cache_ts: float = 0.0
 _SETTINGS_TTL = 30.0
 
 
+def _apply_log_level(level_str: str) -> None:
+    level = getattr(logging, level_str.upper(), logging.INFO)
+    logging.getLogger().setLevel(level)
+    log.setLevel(level)
+
+
 def _get_vlm_config() -> dict:
     global _settings_cache, _settings_cache_ts
     now = time.time()
@@ -183,9 +190,11 @@ def _get_vlm_config() -> dict:
         resp.raise_for_status()
         _settings_cache = resp.json()
         _settings_cache_ts = now
-        log.info("Settings: provider=%s model=%s device=%s",
+        _apply_log_level(_settings_cache.get("logLevel", "INFO"))
+        log.info("Settings: provider=%s model=%s device=%s logLevel=%s",
                  _settings_cache.get("vlmProvider", "ollama"),
-                 _settings_cache.get("vlmModel"), _settings_cache.get("vlmDevice"))
+                 _settings_cache.get("vlmModel"), _settings_cache.get("vlmDevice"),
+                 _settings_cache.get("logLevel", "INFO"))
     except Exception as e:
         log.warning("Cannot fetch settings: %s — using cache/defaults", e)
         if _settings_cache is None:
@@ -249,6 +258,7 @@ def transcribe(audio_path: str) -> str:
 
 def _call_openai(image_b64: str, prompt: str, api_key: str) -> str:
     log.info("Calling OpenAI GPT-4o-mini")
+    log.debug("OpenAI prompt:\n%s", prompt)
     t0 = time.time()
     payload = {
         "model": "gpt-4o-mini",
@@ -266,12 +276,14 @@ def _call_openai(image_b64: str, prompt: str, api_key: str) -> str:
     )
     resp.raise_for_status()
     raw = resp.json()["choices"][0]["message"]["content"].strip()
-    log.info("OpenAI response in %.1fs: %s", time.time() - t0, raw[:200])
+    log.info("OpenAI response in %.1fs: %s…", time.time() - t0, raw[:200])
+    log.debug("OpenAI full response:\n%s", raw)
     return raw
 
 
 def _call_gemini(image_b64: str, prompt: str, api_key: str) -> str:
     log.info("Calling Google Gemini 2.0 Flash Lite (SDK)")
+    log.debug("Gemini prompt:\n%s", prompt)
     t0 = time.time()
     client = genai.Client(api_key=api_key)
     response = client.models.generate_content(
@@ -289,7 +301,8 @@ def _call_gemini(image_b64: str, prompt: str, api_key: str) -> str:
         ),
     )
     raw = response.text.strip()
-    log.info("Gemini response in %.1fs: %s", time.time() - t0, raw[:200])
+    log.info("Gemini response in %.1fs: %s…", time.time() - t0, raw[:200])
+    log.debug("Gemini full response:\n%s", raw)
     return raw
 
 
@@ -307,11 +320,13 @@ def _call_ollama(image_b64: str, prompt: str, cfg: dict, keep_alive=None) -> str
     if keep_alive is not None:
         payload["keep_alive"] = keep_alive
     log.info("Calling Ollama (%s) device=%s keep_alive=%s", model, device, keep_alive)
+    log.debug("Ollama prompt:\n%s", prompt)
     t0 = time.time()
     resp = httpx.post(f"{OLLAMA_HOST}/api/generate", json=payload, timeout=600)
     resp.raise_for_status()
     raw = resp.json()["response"].strip()
-    log.info("Ollama response in %.1fs: %s", time.time() - t0, raw[:200])
+    log.info("Ollama response in %.1fs: %s…", time.time() - t0, raw[:200])
+    log.debug("Ollama full response:\n%s", raw)
     return raw
 
 

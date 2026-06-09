@@ -34,6 +34,8 @@ public class AppSettingsEntity {
     private int aiRetryMaxAttempts = 3;
     private int aiRetryDelaySeconds = 30;
 
+    private String logLevel = "INFO";
+
     public Integer getId() {
         return id;
     }
@@ -184,5 +186,13 @@ public class AppSettingsEntity {
 
     public void setAiRetryDelaySeconds(int aiRetryDelaySeconds) {
         this.aiRetryDelaySeconds = aiRetryDelaySeconds;
+    }
+
+    public String getLogLevel() {
+        return logLevel;
+    }
+
+    public void setLogLevel(String logLevel) {
+        this.logLevel = logLevel;
     }
 }

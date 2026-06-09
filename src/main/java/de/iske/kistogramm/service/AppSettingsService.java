@@ -44,6 +44,7 @@ public class AppSettingsService {
         entity.setAiRetryEnabled(dto.isAiRetryEnabled());
         entity.setAiRetryMaxAttempts(dto.getAiRetryMaxAttempts());
         entity.setAiRetryDelaySeconds(dto.getAiRetryDelaySeconds());
+        entity.setLogLevel(dto.getLogLevel() != null ? dto.getLogLevel() : "INFO");
         return toDto(repository.save(entity));
     }
 
@@ -72,6 +73,7 @@ public class AppSettingsService {
         dto.setAiRetryEnabled(entity.isAiRetryEnabled());
         dto.setAiRetryMaxAttempts(entity.getAiRetryMaxAttempts());
         dto.setAiRetryDelaySeconds(entity.getAiRetryDelaySeconds());
+        dto.setLogLevel(entity.getLogLevel() != null ? entity.getLogLevel() : "INFO");
         return dto;
     }
 }

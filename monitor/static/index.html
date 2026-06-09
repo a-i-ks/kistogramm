@@ -370,6 +370,18 @@
           </div>
         </div>
         <div class="settings-group">
+          <h3>Logging</h3>
+          <div class="field">
+            <label for="set-log-level">Log-Level (AI-Worker)</label>
+            <select id="set-log-level">
+              <option value="DEBUG">DEBUG — Prompts &amp; vollständige LLM-Antworten</option>
+              <option value="INFO">INFO — Standard</option>
+              <option value="WARNING">WARNING — nur Warnungen &amp; Fehler</option>
+              <option value="ERROR">ERROR — nur Fehler</option>
+            </select>
+          </div>
+        </div>
+        <div class="settings-group">
           <h3>Automatische Wiederholung (Retry)</h3>
           <div class="field">
             <div class="checkbox-row">
@@ -553,6 +565,7 @@
         document.getElementById('set-retry-enabled').checked = s.aiRetryEnabled !== false;
         document.getElementById('set-retry-attempts').value = s.aiRetryMaxAttempts ?? 3;
         document.getElementById('set-retry-delay').value = s.aiRetryDelaySeconds ?? 30;
+        document.getElementById('set-log-level').value = s.logLevel ?? 'INFO';
       } catch (e) {
         console.warn('Could not load settings', e);
       }
@@ -580,6 +593,7 @@
         aiRetryEnabled: document.getElementById('set-retry-enabled').checked,
         aiRetryMaxAttempts: parseInt(document.getElementById('set-retry-attempts').value, 10),
         aiRetryDelaySeconds: parseInt(document.getElementById('set-retry-delay').value, 10),
+        logLevel: document.getElementById('set-log-level').value,
       };
       if (openaiKey) body.openaiApiKey = openaiKey;
       if (geminiKey) body.geminiApiKey = geminiKey;

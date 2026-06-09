@@ -158,6 +158,9 @@ public class AppSettingsDto {
     @Max(3600)
     private int aiRetryDelaySeconds = 30;
 
+    @Pattern(regexp = "DEBUG|INFO|WARNING|ERROR")
+    private String logLevel = "INFO";
+
     public boolean isVlmImageCompressionEnabled() {
         return vlmImageCompressionEnabled;
     }
@@ -212,5 +215,13 @@ public class AppSettingsDto {
 
     public void setAiRetryDelaySeconds(int aiRetryDelaySeconds) {
         this.aiRetryDelaySeconds = aiRetryDelaySeconds;
+    }
+
+    public String getLogLevel() {
+        return logLevel;
+    }
+
+    public void setLogLevel(String logLevel) {
+        this.logLevel = logLevel;
     }
 }
