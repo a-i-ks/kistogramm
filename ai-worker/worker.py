@@ -281,25 +281,38 @@ def _call_openai(image_b64: str, prompt: str, api_key: str) -> str:
     return raw
 
 
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite")
+
+
 def _call_gemini(image_b64: str, prompt: str, api_key: str) -> str:
-    log.info("Calling Google Gemini 2.0 Flash Lite (SDK)")
+    log.info("Calling Google Gemini (%s)", GEMINI_MODEL)
     log.debug("Gemini prompt:\n%s", prompt)
     t0 = time.time()
     client = genai.Client(api_key=api_key)
-    response = client.models.generate_content(
-        model="gemini-3.5-flash",
-        contents=[
-            genai_types.Part.from_text(text=prompt),
-            genai_types.Part(inline_data=genai_types.Blob(
-                mime_type="image/jpeg",
-                data=base64.b64decode(image_b64),
-            )),
-        ],
-        config=genai_types.GenerateContentConfig(
-            response_mime_type="application/json",
-            max_output_tokens=1024,
-        ),
-    )
+    try:
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=[
+                genai_types.Part.from_text(text=prompt),
+                genai_types.Part(inline_data=genai_types.Blob(
+                    mime_type="image/jpeg",
+                    data=base64.b64decode(image_b64),
+                )),
+            ],
+            config=genai_types.GenerateContentConfig(
+                response_mime_type="application/json",
+                max_output_tokens=1024,
+            ),
+        )
+    except Exception as exc:
+        exc_str = str(exc)
+        if "429" in exc_str or "RESOURCE_EXHAUSTED" in exc_str:
+            retry_after = _parse_retry_delay(exc_str)
+            log.warning("Gemini rate limit hit: retry_after=%ds — %s", retry_after, exc_str[:200])
+            raise RuntimeError(
+                f"RATE_LIMIT_429: retry_after={retry_after}s — {exc_str[:300]}"
+            ) from exc
+        raise
     raw = response.text.strip()
     log.info("Gemini response in %.1fs: %s…", time.time() - t0, raw[:200])
     log.debug("Gemini full response:\n%s", raw)
@@ -332,8 +345,18 @@ def _call_ollama(image_b64: str, prompt: str, cfg: dict, keep_alive=None) -> str
 
 # ── Gemini rate-limit tracking (Redis-backed) ─────────────────────────────────
 
-GEMINI_RPM_LIMIT = 30
-GEMINI_RPD_LIMIT = 1500
+# Conservative defaults — free tier: ~10 RPM, 20 RPD for gemini-*-flash models.
+# Set these lower than the actual limit so the proactive check fires before the API rejects.
+GEMINI_RPM_LIMIT = 10
+GEMINI_RPD_LIMIT = 15
+
+
+def _parse_retry_delay(exc_str: str, default: int = 60) -> int:
+    """Extract retryDelay seconds from a Gemini API error string."""
+    m = re.search(r"['\"]retryDelay['\"]\s*:\s*['\"](\d+)s['\"]", exc_str)
+    if m:
+        return int(m.group(1))
+    return default
 
 
 def _gemini_check_and_increment(r) -> None:
@@ -344,9 +367,13 @@ def _gemini_check_and_increment(r) -> None:
     rpd = int(r.get(day_key) or 0)
 
     if rpm >= GEMINI_RPM_LIMIT:
-        raise RuntimeError(f"GEMINI_RATE_LIMIT: {rpm}/{GEMINI_RPM_LIMIT} requests this minute — try again in a moment")
+        raise RuntimeError(
+            f"RATE_LIMIT_429: retry_after=60s — {rpm}/{GEMINI_RPM_LIMIT} requests this minute (local limit)"
+        )
     if rpd >= GEMINI_RPD_LIMIT:
-        raise RuntimeError(f"GEMINI_RATE_LIMIT: {rpd}/{GEMINI_RPD_LIMIT} requests today — daily limit reached")
+        raise RuntimeError(
+            f"RATE_LIMIT_429: retry_after=3600s — {rpd}/{GEMINI_RPD_LIMIT} requests today (local daily limit)"
+        )
 
     pipe = r.pipeline()
     pipe.incr(minute_key)

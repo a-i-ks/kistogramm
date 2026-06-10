@@ -28,6 +28,8 @@ import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/api/ai/webhook")
@@ -95,14 +97,14 @@ public class AiWebhookController {
             if (isRetryableError(payload.getError())) {
                 AppSettingsDto settings = appSettingsService.getSettings();
                 if (settings.isAiRetryEnabled() && job.getRetryCount() < settings.getAiRetryMaxAttempts()) {
+                    long delaySeconds = parseRetryDelaySeconds(payload.getError(), settings.getAiRetryDelaySeconds());
                     job.setRetryCount(job.getRetryCount() + 1);
-                    job.setNextRetryAt(LocalDateTime.now().plusSeconds(settings.getAiRetryDelaySeconds()));
+                    job.setNextRetryAt(LocalDateTime.now().plusSeconds(delaySeconds));
                     job.setStatus(AiJobEntity.Status.AWAITING_RETRY);
                     job.setErrorMessage(payload.getError());
                     aiJobRepository.save(job);
                     log.warn("Webhook: job {} scheduled for retry {}/{} in {}s",
-                            job.getId(), job.getRetryCount(), settings.getAiRetryMaxAttempts(),
-                            settings.getAiRetryDelaySeconds());
+                            job.getId(), job.getRetryCount(), settings.getAiRetryMaxAttempts(), delaySeconds);
                     return ResponseEntity.ok().build();
                 }
             }
@@ -231,7 +233,23 @@ public class AiWebhookController {
         return "image/jpeg";
     }
 
+    private static final Pattern RETRY_AFTER_PATTERN = Pattern.compile("retry_after=(\\d+)s");
+
     private boolean isRetryableError(String error) {
-        return error != null && error.contains("503");
+        if (error == null) return false;
+        String upper = error.toUpperCase();
+        return upper.contains("503")
+                || upper.contains("RATE_LIMIT_429")
+                || upper.contains("RESOURCE_EXHAUSTED")
+                || upper.contains("QUOTA");
+    }
+
+    private long parseRetryDelaySeconds(String error, long defaultSeconds) {
+        if (error == null) return defaultSeconds;
+        Matcher m = RETRY_AFTER_PATTERN.matcher(error);
+        if (m.find()) {
+            return Long.parseLong(m.group(1));
+        }
+        return defaultSeconds;
     }
 }
